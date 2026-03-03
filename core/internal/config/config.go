@@ -48,6 +48,7 @@ type WebConfig struct {
 	Port              int
 	Debug             bool
 	APIURL            string
+	WebBaseURL        string
 	InternalSecret    string
 	WorkOSAPIKey      string
 	WorkOSClientID    string
@@ -66,6 +67,7 @@ func LoadWeb() (*WebConfig, error) {
 	}
 
 	cfg.APIURL = getEnv("PLATFORM_API_URL", "http://localhost:8080")
+	cfg.WebBaseURL = getEnv("PLATFORM_WEB_BASE_URL", "http://localhost:3000")
 
 	if cfg.InternalSecret, err = getEnvRequired("PLATFORM_INTERNAL_SECRET"); err != nil {
 		return nil, err

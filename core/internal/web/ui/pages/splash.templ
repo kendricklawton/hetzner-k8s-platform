@@ -3,16 +3,14 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ SplashPage(status string, userName string) {
-	@components.Layout("Project Platform | Compiled Language Cloud", userName) {
+	@components.Layout("Project Platform | The complied language cloud", userName) {
 		@SplashContent(status, userName)
 	}
 }
 
+
 templ SplashContent(status string, userName string) {
-	<title>Project Platform</title>
 	<div class="flex flex-col gap-24 py-12 relative">
-		// Subtle grid background
-		<div class="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none" style="background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;"></div>
 		// ── HERO ──────────────────────────────────────────────────────────────
 		<section class="relative z-10 grid lg:grid-cols-2 gap-16 items-start">
 			<div class="flex flex-col items-start">
@@ -84,15 +82,13 @@ templ SplashContent(status string, userName string) {
 						<div class="flex gap-0">
 							<button
 								@click="lang = 'go'"
-								:class="lang === 'go' ? 'text-zinc-900 dark:text-white border-b-2 border-blue-500 dark:border-atom-blue' : 'text-zinc-400 dark:text-atom-muted border-b-2 border-transparent hover:text-zinc-700 dark:hover:text-zinc-300'"
-								class="px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none"
+								:class="lang === 'go' ? 'border-b-2 border-blue-500 dark:border-atom-blue text-zinc-900 dark:text-white px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none' : 'border-b-2 border-transparent text-zinc-400 dark:text-atom-muted hover:text-zinc-700 dark:hover:text-zinc-300 px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none'"
 							>
 								main.go
 							</button>
 							<button
 								@click="lang = 'rust'"
-								:class="lang === 'rust' ? 'text-zinc-900 dark:text-white border-b-2 border-amber-500 dark:border-atom-yellow' : 'text-zinc-400 dark:text-atom-muted border-b-2 border-transparent hover:text-zinc-700 dark:hover:text-zinc-300'"
-								class="px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none"
+								:class="lang === 'rust' ? 'border-b-2 border-amber-500 dark:border-atom-yellow text-zinc-900 dark:text-white px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none' : 'border-b-2 border-transparent text-zinc-400 dark:text-atom-muted hover:text-zinc-700 dark:hover:text-zinc-300 px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest transition-colors cursor-pointer focus:outline-none'"
 							>
 								main.rs
 							</button>
@@ -134,22 +130,62 @@ templ SplashContent(status string, userName string) {
 			</div>
 		</section>
 		// ── STATS BAR ─────────────────────────────────────────────────────────
-		<section class="relative z-10 border-y border-zinc-200 dark:border-atom-border py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-			<div class="flex flex-col gap-1">
-				<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">sub-ms</span>
-				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Cold Start</span>
+		<section class="relative z-10">
+			<div class="grid grid-cols-8 lg:grid-cols-16">
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
 			</div>
-			<div class="flex flex-col gap-1">
-				<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">zero</span>
-				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">SDK Required</span>
+			<div class="py-10">
+				<div class="grid grid-cols-2 gap-8 md:flex md:justify-between md:gap-0">
+					<div class="flex flex-col gap-1">
+						<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">sub-ms</span>
+						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Cold Start</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">zero</span>
+						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">SDK Required</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-xl font-black text-zinc-900 dark:text-white tracking-tight mt-1">Go · Rust</span>
+						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Languages</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-3xl font-black text-zinc-400 dark:text-atom-muted tracking-tight">Zig</span>
+						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Coming Next</span>
+					</div>
+				</div>
 			</div>
-			<div class="flex flex-col gap-1">
-				<span class="text-xl font-black text-zinc-900 dark:text-white tracking-tight mt-1">Go · Rust</span>
-				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Languages</span>
-			</div>
-			<div class="flex flex-col gap-1">
-				<span class="text-3xl font-black text-zinc-400 dark:text-atom-muted tracking-tight">Zig</span>
-				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Coming Next</span>
+			<div class="grid grid-cols-8 lg:grid-cols-16">
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
 			</div>
 		</section>
 		// ── FEATURES ──────────────────────────────────────────────────────────
@@ -158,7 +194,7 @@ templ SplashContent(status string, userName string) {
 				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">{ "// Zero-SDK" }</span>
 				<h2 class="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-widest mt-1">Bring Your Own Binary.</h2>
 			</div>
-			<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+			<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border">
 				@splashFeatureCard("01", "zap", "Instant Wake", "No interpreter, no JVM warmup. Static binaries wake from sleep at the speed of exec() — sub-millisecond, every time.", "both")
 				@splashFeatureCard("02", "activity", "Goroutine Autoscale", "M:N scheduled goroutines with native backpressure tracking. Scale from one request to millions without thread-pool overhead or per-goroutine stack limits.", "go")
 				@splashFeatureCard("03", "cpu", "No GC. No Runtime.", "Rust has no garbage collector. No stop-the-world pauses. No hidden allocator on your hot path. Memory is released the instant ownership ends — determined at compile time.", "rust")
@@ -173,32 +209,119 @@ templ SplashContent(status string, userName string) {
 				@splashFeatureCard("12", "scan-search", "Dependency Auditing", "govulncheck for Go. cargo audit for Rust. Every push scans your entire statically-linked dependency tree against the OSV database — no CVEs slip through.", "both")
 			</div>
 		</section>
-		// ── PIPELINE LOG ──────────────────────────────────────────────────────
-		<section class="relative z-10 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg">
-			// Terminal chrome
-			<div class="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface">
-				<div class="flex items-center gap-1.5">
-					<div class="w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-atom-red opacity-80"></div>
-					<div class="w-2.5 h-2.5 rounded-full bg-yellow-400 dark:bg-atom-yellow opacity-80"></div>
-					<div class="w-2.5 h-2.5 rounded-full bg-green-400 dark:bg-atom-green opacity-80"></div>
-				</div>
-				<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest">Execution Pipeline — Rust Build</span>
-				<span class="inline-flex items-center gap-1.5 text-[10px] font-mono text-green-600 dark:text-atom-green">
-					<span class="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-atom-green animate-pulse inline-block"></span>
-					LIVE
-				</span>
+		// ── CLI ───────────────────────────────────────────────────────────────
+		<section class="relative z-10">
+			<div class="mb-10">
+				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">{ "// platform-cli" }</span>
+				<h2 class="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-widest mt-1">Ship From Your Terminal.</h2>
 			</div>
-			// Log lines
-			<div class="p-6 font-mono text-xs leading-loose overflow-x-auto">
-				@splashLogLine("00:00.000", "INFO", "Webhook received. Detecting language...", "default")
-				@splashLogLine("00:00.135", "INFO", "Detected Rust 1.76 (cargo).", "default")
-				@splashLogLine("00:00.412", "INFO", "Fetching dependencies (cargo fetch)...", "default")
-				@splashLogLine("00:02.100", "INFO", "Building release binary (x86_64-unknown-linux-musl)...", "default")
-				@splashLogLine("00:02.101", "EXEC", "cargo build --release --target x86_64-unknown-linux-musl", "muted")
-				@splashLogLine("00:18.450", "INFO", "Build complete. Binary size: 4.2MB. (stripped + LTO)", "default")
-				@splashLogLine("00:18.500", "INFO", "Packaging into scratch container...", "default")
-				@splashLogLine("00:20.100", "INFO", "Pushing artifact to registry...", "default")
-				@splashLogLine("00:20.550", "SUCCESS", "DEPLOYMENT LIVE → https://api.platform.dev", "success")
+			<div class="grid lg:grid-cols-2 gap-8">
+				// Terminal session (left)
+				<div class="border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg">
+					<div class="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface">
+						<div class="flex items-center gap-1.5">
+							<div class="w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-atom-red opacity-80"></div>
+							<div class="w-2.5 h-2.5 rounded-full bg-yellow-400 dark:bg-atom-yellow opacity-80"></div>
+							<div class="w-2.5 h-2.5 rounded-full bg-green-400 dark:bg-atom-green opacity-80"></div>
+						</div>
+						<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest">Terminal — platform CLI</span>
+						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted">v0.1.0</span>
+					</div>
+					<div class="p-6 font-mono text-xs leading-loose overflow-x-auto">
+						@splashCLILine("cmd", "plat init my-api")
+						@splashCLILine("success", "Created project: my-api")
+						@splashCLILine("success", "Generated plat.toml")
+						@splashCLILine("gap", "")
+						@splashCLILine("cmd", "plat deploy my-api")
+						@splashCLILine("muted", "Building Go binary (linux/amd64)...")
+						@splashCLILine("success", "Binary: 3.1MB (stripped + static)")
+						@splashCLILine("success", "Revision r42 live → my-api.platform.dev")
+						@splashCLILine("gap", "")
+						@splashCLILine("cmd", "plat logs my-api --tail")
+						@splashCLILine("log", "[INFO] Service started on :8080")
+						@splashCLILine("log", "[INFO] GET /healthz 200 0.1ms")
+						@splashCLILine("gap", "")
+						@splashCLILine("cmd", "plat rollback my-api")
+						@splashCLILine("success", "Rolled back to revision r41")
+					</div>
+				</div>
+				// Command reference (right)
+				<div class="flex flex-col gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border">
+					@splashCLICmd("init", "[project]", "Scaffold a new project and generate plat.toml")
+					@splashCLICmd("deploy", "[project]", "Build, containerize, and deploy to production")
+					@splashCLICmd("logs", "[project] [--tail]", "Stream live logs from running services")
+					@splashCLICmd("status", "[project]", "Show service health, uptime, and replica count")
+					@splashCLICmd("revisions", "[project]", "List all deployments with timestamps and IDs")
+					@splashCLICmd("rollback", "[project]", "Instantly revert to the last healthy revision")
+					@splashCLICmd("secret", "set KEY=value", "Encrypt and inject a secret at runtime")
+					@splashCLICmd("version", "", "Print CLI version and connected API endpoint")
+				</div>
+			</div>
+		</section>
+		// ── PIPELINE LOG ──────────────────────────────────────────────────────
+		<section class="relative z-10">
+			<div class="grid grid-cols-8 lg:grid-cols-16">
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+			</div>
+			<div class="">
+				// Terminal chrome
+				<div class="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface">
+					<div class="flex items-center gap-1.5">
+						<div class="w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-atom-red opacity-80"></div>
+						<div class="w-2.5 h-2.5 rounded-full bg-yellow-400 dark:bg-atom-yellow opacity-80"></div>
+						<div class="w-2.5 h-2.5 rounded-full bg-green-400 dark:bg-atom-green opacity-80"></div>
+					</div>
+					<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest">Execution Pipeline — Rust Build</span>
+					<span class="inline-flex items-center gap-1.5 text-[10px] font-mono text-green-600 dark:text-atom-green">
+						<span class="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-atom-green animate-pulse inline-block"></span>
+						LIVE
+					</span>
+				</div>
+				// Log lines
+				<div class="p-6 font-mono text-xs leading-loose overflow-x-auto">
+					@splashLogLine("00:00.000", "INFO", "Webhook received. Detecting language...", "default")
+					@splashLogLine("00:00.135", "INFO", "Detected Rust 1.76 (cargo).", "default")
+					@splashLogLine("00:00.412", "INFO", "Fetching dependencies (cargo fetch)...", "default")
+					@splashLogLine("00:02.100", "INFO", "Building release binary (x86_64-unknown-linux-musl)...", "default")
+					@splashLogLine("00:02.101", "EXEC", "cargo build --release --target x86_64-unknown-linux-musl", "muted")
+					@splashLogLine("00:18.450", "INFO", "Build complete. Binary size: 4.2MB. (stripped + LTO)", "default")
+					@splashLogLine("00:18.500", "INFO", "Packaging into scratch container...", "default")
+					@splashLogLine("00:20.100", "INFO", "Pushing artifact to registry...", "default")
+					@splashLogLine("00:20.550", "SUCCESS", "DEPLOYMENT LIVE → https://api.platform.dev", "success")
+				</div>
+			</div>
+			<div class="grid grid-cols-8 lg:grid-cols-16">
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
 			</div>
 		</section>
 		// ── CTA BANNER ────────────────────────────────────────────────────────
@@ -235,58 +358,27 @@ templ SplashContent(status string, userName string) {
 }
 
 templ splashFeatureCard(num string, icon string, title string, desc string, lang string) {
-	if lang == "go" {
-		<div class="group bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors border border-zinc-200 dark:border-atom-border">
-			<div class="h-0.5 bg-blue-500 dark:bg-atom-blue"></div>
-			<div class="p-6">
-				<div class="flex items-center justify-between mb-4">
-					<div class="flex items-center gap-3">
-						<div class="text-zinc-400 dark:text-atom-muted group-hover:text-blue-600 dark:group-hover:text-atom-blue transition-colors">
-							<i data-lucide={ icon } width="16" height="16"></i>
-						</div>
-						<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted tracking-widest font-mono">{ num }_</span>
+	<div class="group bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors">
+		<div class="p-6">
+			<div class="flex items-center justify-between mb-4">
+				<div class="flex items-center gap-3">
+					<div class="text-zinc-400 dark:text-atom-muted group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+						<i data-lucide={ icon } width="16" height="16"></i>
 					</div>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted tracking-widest font-mono">{ num }_</span>
+				</div>
+				if lang == "go" {
 					<span class="text-[9px] font-bold font-mono px-1.5 py-0.5 border border-blue-300 dark:border-atom-blue/40 text-blue-600 dark:text-atom-blue uppercase tracking-widest">Go</span>
-				</div>
-				<h3 class="text-xs font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-widest group-hover:text-blue-600 dark:group-hover:text-atom-blue transition-colors">{ title }</h3>
-				<p class="text-xs text-zinc-500 dark:text-atom-muted leading-relaxed">{ desc }</p>
-			</div>
-		</div>
-	} else if lang == "rust" {
-		<div class="group bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors border border-zinc-200 dark:border-atom-border">
-			<div class="h-0.5 bg-amber-500 dark:bg-atom-yellow"></div>
-			<div class="p-6">
-				<div class="flex items-center justify-between mb-4">
-					<div class="flex items-center gap-3">
-						<div class="text-zinc-400 dark:text-atom-muted group-hover:text-amber-600 dark:group-hover:text-atom-yellow transition-colors">
-							<i data-lucide={ icon } width="16" height="16"></i>
-						</div>
-						<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted tracking-widest font-mono">{ num }_</span>
-					</div>
+				} else if lang == "rust" {
 					<span class="text-[9px] font-bold font-mono px-1.5 py-0.5 border border-amber-300 dark:border-atom-yellow/40 text-amber-600 dark:text-atom-yellow uppercase tracking-widest">Rust</span>
-				</div>
-				<h3 class="text-xs font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-widest group-hover:text-amber-600 dark:group-hover:text-atom-yellow transition-colors">{ title }</h3>
-				<p class="text-xs text-zinc-500 dark:text-atom-muted leading-relaxed">{ desc }</p>
-			</div>
-		</div>
-	} else {
-		<div class="group bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors border border-zinc-200 dark:border-atom-border">
-			<div class="h-0.5 bg-zinc-300 dark:bg-zinc-600"></div>
-			<div class="p-6">
-				<div class="flex items-center justify-between mb-4">
-					<div class="flex items-center gap-3">
-						<div class="text-zinc-400 dark:text-atom-muted group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
-							<i data-lucide={ icon } width="16" height="16"></i>
-						</div>
-						<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted tracking-widest font-mono">{ num }_</span>
-					</div>
+				} else {
 					<span class="text-[9px] font-bold font-mono px-1.5 py-0.5 border border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Go · Rust</span>
-				</div>
-				<h3 class="text-xs font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-widest group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">{ title }</h3>
-				<p class="text-xs text-zinc-500 dark:text-atom-muted leading-relaxed">{ desc }</p>
+				}
 			</div>
+			<h3 class="text-xs font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-widest group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">{ title }</h3>
+			<p class="text-xs text-zinc-500 dark:text-atom-muted leading-relaxed">{ desc }</p>
 		</div>
-	}
+	</div>
 }
 
 templ splashLogLine(timestamp string, level string, message string, variant string) {
@@ -299,5 +391,37 @@ templ splashLogLine(timestamp string, level string, message string, variant stri
 		} else {
 			<span><span class="text-zinc-900 dark:text-white font-bold">{ level }</span> :: { message }</span>
 		}
+	</div>
+}
+
+templ splashCLILine(lineType string, text string) {
+	if lineType == "cmd" {
+		<div class="flex gap-2">
+			<span class="text-green-600 dark:text-atom-green select-none shrink-0">$</span>
+			<span class="text-zinc-900 dark:text-white">{ text }</span>
+		</div>
+	} else if lineType == "success" {
+		<div class="flex gap-2 pl-4">
+			<span class="text-green-600 dark:text-atom-green shrink-0">✓</span>
+			<span class="text-zinc-600 dark:text-atom-fg">{ text }</span>
+		</div>
+	} else if lineType == "muted" {
+		<div class="pl-4 text-zinc-400 dark:text-atom-muted">{ text }</div>
+	} else if lineType == "log" {
+		<div class="pl-4 text-blue-600 dark:text-atom-cyan">{ text }</div>
+	} else if lineType == "gap" {
+		<div class="h-3"></div>
+	}
+}
+
+templ splashCLICmd(cmd string, args string, desc string) {
+	<div class="bg-white dark:bg-atom-bg p-4 flex flex-col gap-1.5 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors">
+		<div class="flex items-baseline gap-2 flex-wrap">
+			<span class="text-[10px] font-bold font-mono text-zinc-900 dark:text-white">plat { cmd }</span>
+			if args != "" {
+				<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted">{ args }</span>
+			}
+		</div>
+		<p class="text-[10px] text-zinc-500 dark:text-atom-muted font-mono leading-relaxed">{ desc }</p>
 	</div>
 }

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/workos/workos-go/v6/pkg/usermanagement"
@@ -25,6 +27,11 @@ const (
 
 	// stateCookieName is the short-lived CSRF state cookie set during login.
 	stateCookieName = "auth_state"
+
+	// workosSessionCookieName holds the WorkOS session ID (the `sid` JWT claim).
+	// Used on logout to revoke the WorkOS SSO session so the user is fully
+	// signed out of the identity provider (e.g. Google) and not auto-logged back in.
+	workosSessionCookieName = "platform_workos_sid"
 )
 
 // sessionKey is the context key used to pass the user UUID through middleware.
@@ -167,56 +174,91 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		Expires:  exp,
 	})
 
+	// WorkOS session ID — extracted from the access token's `sid` claim.
+	// Stored so AuthLogout can revoke the WorkOS SSO session and prevent
+	// the identity provider (e.g. Google) from auto-logging the user back in.
+	if sid, err := extractSIDFromJWT(authResp.AccessToken); err == nil && sid != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     workosSessionCookieName,
+			Value:    sid,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  exp,
+		})
+	} else if err != nil {
+		log.Printf("AuthCallback: could not extract WorkOS session ID: %v", err)
+	}
+
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
-// AuthLogout clears all session cookies and redirects to the home page.
-// Must be a full page navigation — the sign out link uses a plain <a href> with no hx-* attributes.
+// AuthLogout clears all session cookies and redirects to the WorkOS logout URL,
+// which revokes the SSO session (e.g. Google) and then redirects back to the
+// home page. Without this, the identity provider would auto-log the user back
+// in immediately when they click Login again.
 func (h *Handler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	log.Printf("AuthLogout: clearing session cookies for request from %s", r.RemoteAddr)
 
 	past := time.Unix(0, 0)
 
-	// Delete both cookies: MaxAge=-1 sends Max-Age=0; Expires=epoch is belt-and-suspenders
-	// for browsers that don't honour Max-Age. Path and Domain must match the original.
-	http.SetCookie(w, &http.Cookie{
-		Name:     SessionCookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-		Expires:  past,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     nameCookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-		Expires:  past,
-	})
-	// Clean up CSRF state cookie too if it lingered
-	http.SetCookie(w, &http.Cookie{
-		Name:    stateCookieName,
-		Value:   "",
-		Path:    "/",
-		MaxAge:  -1,
-		Expires: past,
-	})
-
-	log.Printf("AuthLogout: cookies cleared, redirecting to /")
-
-	// If the browser somehow sends this as an HTMX request, use HX-Redirect
-	// so HTMX performs a full-page navigation rather than a partial swap.
-	if r.Header.Get("HX-Request") == "true" {
-		w.Header().Set("HX-Redirect", "/")
-		w.WriteHeader(http.StatusOK)
-		return
+	// Delete all session cookies. MaxAge=-1 → Max-Age=0; Expires=epoch is
+	// belt-and-suspenders for browsers that don't honour Max-Age.
+	for _, name := range []string{SessionCookieName, nameCookieName, workosSessionCookieName, stateCookieName} {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   -1,
+			Expires:  past,
+		})
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	log.Printf("AuthLogout: cookies cleared")
+
+	// If we have a WorkOS session ID, redirect through WorkOS's logout endpoint
+	// to revoke the SSO session. WorkOS will redirect back to BaseURL when done.
+	sidCookie, err := r.Cookie(workosSessionCookieName)
+	if err == nil && sidCookie.Value != "" {
+		usermanagement.SetAPIKey(h.WorkOSAPIKey)
+		logoutURL, err := usermanagement.GetLogoutURL(usermanagement.GetLogoutURLOpts{
+			SessionID: sidCookie.Value,
+			ReturnTo:  h.BaseURL,
+		})
+		if err == nil {
+			log.Printf("AuthLogout: redirecting to WorkOS logout URL")
+			http.Redirect(w, r, logoutURL.String(), http.StatusSeeOther)
+			return
+		}
+		log.Printf("AuthLogout: failed to build WorkOS logout URL: %v", err)
+	}
+
+	// Fallback: WorkOS session ID unavailable, redirect home directly.
+	log.Printf("AuthLogout: no WorkOS session found, redirecting home")
+	http.Redirect(w, r, h.BaseURL, http.StatusSeeOther)
+}
+
+// extractSIDFromJWT decodes the payload of a JWT (without verifying the
+// signature) and returns the `sid` claim, which WorkOS uses as the session ID.
+func extractSIDFromJWT(token string) (string, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("malformed JWT: expected 3 parts, got %d", len(parts))
+	}
+	// JWT uses base64url encoding with no padding
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("decode JWT payload: %w", err)
+	}
+	var claims struct {
+		SID string `json:"sid"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "", fmt.Errorf("unmarshal JWT claims: %w", err)
+	}
+	return claims.SID, nil
 }
 
 // provisionUserViaAPI calls POST /v1/auth/provision on the Core API.

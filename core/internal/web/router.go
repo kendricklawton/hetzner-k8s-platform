@@ -19,6 +19,8 @@ func (h *Handler) Routes() chi.Router {
 
 	// Public routes
 	router.Get("/", h.Splash)
+	router.Get("/about", h.About)
+	router.Get("/changelog", h.Changelog)
 	router.Get("/pricing", h.Pricing)
 	router.Get("/healthz", h.Healthz)
 	router.Get("/docs", h.Docs)

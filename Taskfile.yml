@@ -341,10 +341,11 @@ tasks:
   dev:web:
     desc: "Run the Go+HTMX Backend-for-Frontend (BFF)"
     dir: core
+    ignore_error: true
     cmds:
       - |
-        templ generate --watch & \
-        tailwindcss -i ./internal/web/ui/static/input.css -o ./internal/web/ui/static/styles.css --watch & \
+        templ generate --watch &
+        tailwindcss -i ./internal/web/ui/static/input.css -o ./internal/web/ui/static/styles.css --watch &
         go run github.com/air-verse/air@latest -c .air.web.toml
 
   dev:cli:

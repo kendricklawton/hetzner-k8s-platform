@@ -21,13 +21,13 @@ templ PricingContent(userName string) {
 			</div>
 			<h1 class="text-5xl sm:text-6xl font-black tracking-tighter leading-[0.9]">
 				<span class="text-zinc-900 dark:text-white">SIMPLE.</span>
-				<span class="text-zinc-400 dark:text-atom-muted">HONEST. </span>
+				<span class="text-zinc-400 dark:text-atom-muted">FLAT. </span>
 				<span class="text-zinc-200 dark:text-atom-border">PRICING.</span>
 			</h1>
 			<p class="text-sm text-zinc-500 dark:text-atom-muted max-w-lg leading-loose font-mono border-l-2 border-zinc-300 dark:border-atom-border pl-4 text-left">
-				We're in early access. Costs are tied directly to Hetzner infrastructure.
+				Early access. Free to start — no credit card required.
 				<br/>
-				No surprises. No per-seat nonsense. No JavaScript tax.
+				Upgrade when you need more.
 			</p>
 		</section>
 		// ── PLAN CARDS ────────────────────────────────────────────────────────
@@ -44,19 +44,22 @@ templ PricingContent(userName string) {
 						<span class="text-4xl font-black text-zinc-900 dark:text-white">$0</span>
 						<span class="text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5">/ month</span>
 					</div>
-					<p class="text-xs text-zinc-500 dark:text-atom-muted font-mono leading-relaxed">Limited seats while we're in alpha. First movers, forever free.</p>
+					<p class="text-xs text-zinc-500 dark:text-atom-muted font-mono leading-relaxed">Get started solo. No credit card required. Build and ship real products at no cost.</p>
 				</div>
 				<div class="border-t border-zinc-200 dark:border-atom-border"></div>
-				<ul class="flex flex-col gap-3">
-					@pricingFeatureRow("check", "1 project", true)
-					@pricingFeatureRow("check", "Up to 3 services", true)
+				<ul class="flex flex-col divide-y divide-zinc-200 dark:divide-atom-border">
+					@pricingFeatureRow("check", "1 project, up to 3 services", true)
 					@pricingFeatureRow("check", "Go + Rust deployments", true)
-					@pricingFeatureRow("check", "Static binary builds", true)
+					@pricingFeatureRow("check", "Encrypted secrets management", true)
+					@pricingFeatureRow("check", "1 custom domain + auto TLS", true)
 					@pricingFeatureRow("check", "Basic metrics dashboard", true)
 					@pricingFeatureRow("check", "Community support", true)
+					@pricingFeatureRow("check", "10 GB egress / month", true)
+					@pricingFeatureRow("check", "200 build minutes / month", true)
+					@pricingFeatureRow("x", "Team members (solo workspace)", false)
+					@pricingFeatureRow("x", "Multiple projects", false)
 					@pricingFeatureRow("x", "Preview environments", false)
-					@pricingFeatureRow("x", "Native profiling (pprof / flamegraph)", false)
-					@pricingFeatureRow("x", "Encrypted secrets management", false)
+					@pricingFeatureRow("x", "Audit log", false)
 					@pricingFeatureRow("x", "Atomic rollbacks", false)
 				</ul>
 				<div class="mt-auto pt-4">
@@ -87,20 +90,23 @@ templ PricingContent(userName string) {
 						<span class="text-4xl font-black text-white">~$20</span>
 						<span class="text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5">/ month</span>
 					</div>
-					<p class="text-xs text-zinc-400 dark:text-atom-muted font-mono leading-relaxed">Exact pricing pending Hetzner cost analysis. No surprises.</p>
+					<p class="text-xs text-zinc-400 dark:text-atom-muted font-mono leading-relaxed">A flat monthly rate that covers your whole team. No inflated tiers. No surprise overage charges.</p>
 				</div>
 				<div class="relative z-10 border-t border-zinc-700 dark:border-atom-border"></div>
-				<ul class="relative z-10 flex flex-col gap-3">
+				<ul class="relative z-10 flex flex-col divide-y divide-zinc-700 dark:divide-atom-border">
 					@pricingFeatureRowDark("check", "Everything in Free", true)
-					@pricingFeatureRowDark("check", "Multiple projects", true)
-					@pricingFeatureRowDark("check", "No artificial compute caps", true)
-					@pricingFeatureRowDark("check", "Go + Rust + Zig (when ready)", true)
+					@pricingFeatureRowDark("check", "Up to 10 projects", true)
+					@pricingFeatureRowDark("check", "Up to 10 services per project", true)
+					@pricingFeatureRowDark("check", "Up to 5 team members (owner / member / viewer)", true)
+					@pricingFeatureRowDark("check", "Unlimited custom domains + auto TLS", true)
 					@pricingFeatureRowDark("check", "Preview environments", true)
+					@pricingFeatureRowDark("check", "Audit log + compliance exports", true)
 					@pricingFeatureRowDark("check", "Native profiling (pprof / flamegraph)", true)
-					@pricingFeatureRowDark("check", "Encrypted secrets management", true)
 					@pricingFeatureRowDark("check", "Atomic rollbacks", true)
 					@pricingFeatureRowDark("check", "Advanced metrics dashboard", true)
 					@pricingFeatureRowDark("check", "Priority support", true)
+					@pricingFeatureRowDark("check", "100 GB egress / month", true)
+					@pricingFeatureRowDark("check", "2,000 build minutes / month", true)
 				</ul>
 				<div class="relative z-10 mt-auto pt-4">
 					<button disabled class="inline-flex w-full items-center justify-center gap-2 px-6 py-3 border border-zinc-700 dark:border-atom-border text-zinc-500 dark:text-atom-muted font-bold text-xs tracking-widest uppercase cursor-not-allowed opacity-50">
@@ -117,11 +123,12 @@ templ PricingContent(userName string) {
 				<h2 class="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-widest mt-1">Common Questions.</h2>
 			</div>
 			<div class="flex flex-col gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border">
-				@pricingFaqRow("What languages are supported?", "Go and Rust today. Zig is on the roadmap. No interpreted languages — ever. This platform is for compiled, static binary workloads only.")
-				@pricingFaqRow("Why only static binaries?", "Static binaries mean zero runtime dependencies, sub-millisecond cold starts, and scratch containers with a minimal attack surface. No interpreter, no JVM, no GC pause on your critical path.")
-				@pricingFaqRow("Why is free truly free?", "Early users help us find bugs and shape the platform. In return, founding users keep the free tier — even after Pro launches. We don't retroactively punish early adopters.")
-				@pricingFaqRow("How is Pro pricing determined?", "We're a solo-operated platform running on Hetzner. Pro pricing will reflect actual infrastructure cost plus a reasonable margin — no VC-inflated pricing, no surprise tiers.")
-				@pricingFaqRow("What happens when I exceed the free tier limits?", "You'll be notified before anything is throttled. We won't silently downgrade or delete your deployments. You'll have time to migrate or upgrade.")
+				@pricingFaqRow("What languages are supported?", "Go and Rust today. Zig is on the roadmap. The platform targets compiled, static binary workloads only — no interpreted runtimes or managed languages.")
+				@pricingFaqRow("Why only static binaries?", "Static binaries have zero runtime dependencies, sub-millisecond cold starts, and run in scratch containers with a minimal attack surface. No interpreter overhead, no JVM, no GC pauses on your critical path.")
+				@pricingFaqRow("How do teams work?", "Team features are available on Pro. Pro accounts support up to 5 members with owner, member, and viewer roles across up to 10 projects. The free tier is a solo workspace — one account, one project.")
+				@pricingFaqRow("What are the resource limits?", "Limits are account-wide totals, not per service. Free: 128 MB RAM, 0.5 vCPU — more than enough for a static Go or Rust binary, which typically idles under 20 MB. Pro: 1 GB RAM, 2 vCPU — distribute across your services as needed. Limits are sized around actual workload reality, not inflated marketing numbers.")
+				@pricingFaqRow("How is Pro pricing determined?", "Pro pricing reflects actual infrastructure cost plus a margin. Pricing may change over time — we'll give notice before any changes take effect.")
+				@pricingFaqRow("What happens when I approach the free tier limits?", "You'll get a notification before anything is throttled. You'll have time to upgrade to Pro or reduce usage before any limits kick in.")
 			</div>
 		</section>
 		// ── CTA BANNER ────────────────────────────────────────────────────────
@@ -134,7 +141,7 @@ templ PricingContent(userName string) {
 					<br/>
 					Get in early.
 				</h2>
-				<p class="text-sm text-zinc-400 dark:text-atom-muted mb-8 font-mono">Free tier is yours to keep. No credit card. No bullshit.</p>
+				<p class="text-sm text-zinc-400 dark:text-atom-muted mb-8 font-mono">No credit card. No hidden fees. Limits apply — see the table above.</p>
 				<div class="flex flex-col sm:flex-row gap-3 justify-center">
 					if userName != "" {
 						<a href="/dashboard" class="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-white text-black font-bold text-xs tracking-widest uppercase hover:opacity-90 transition-opacity">
@@ -158,7 +165,7 @@ templ PricingContent(userName string) {
 }
 
 templ pricingFeatureRow(icon string, label string, enabled bool) {
-	<li class="flex items-center gap-3">
+	<li class="flex items-center gap-3 py-2.5">
 		if enabled {
 			<span class="text-green-500 dark:text-atom-green shrink-0"><i data-lucide={ icon } width="12" height="12"></i></span>
 			<span class="text-xs font-mono text-zinc-700 dark:text-atom-fg">{ label }</span>
@@ -170,7 +177,7 @@ templ pricingFeatureRow(icon string, label string, enabled bool) {
 }
 
 templ pricingFeatureRowDark(icon string, label string, enabled bool) {
-	<li class="flex items-center gap-3">
+	<li class="flex items-center gap-3 py-2.5">
 		if enabled {
 			<span class="text-green-400 dark:text-atom-green shrink-0"><i data-lucide={ icon } width="12" height="12"></i></span>
 			<span class="text-xs font-mono text-zinc-300 dark:text-atom-fg">{ label }</span>
@@ -182,7 +189,7 @@ templ pricingFeatureRowDark(icon string, label string, enabled bool) {
 }
 
 templ pricingFaqRow(question string, answer string) {
-	<div class="bg-white dark:bg-atom-bg p-6 flex flex-col gap-2 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors">
+	<div class="bg-white dark:bg-atom-bg p-6 flex flex-col gap-3 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors">
 		<h3 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">{ question }</h3>
 		<p class="text-xs text-zinc-500 dark:text-atom-muted font-mono leading-relaxed">{ answer }</p>
 	</div>

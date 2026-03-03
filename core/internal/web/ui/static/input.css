@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@source "../**/*.templ";
+@source "../../**/*.go";
+
 @theme {
     --font-mono: "Roboto Mono", monospace;
     --animate-loading: loading 2s ease-in-out infinite;
@@ -48,6 +51,22 @@
 }
 
 @variant dark (&:where(.dark, .dark *));
+
+/* Nav item slide-in hover — highlight slides left→right from user's perspective */
+.nav-item {
+    background: linear-gradient(to right, #f4f4f5 50%, transparent 50%);
+    background-size: 205% 100%;
+    background-position: right center;
+    transition: background-position 0.2s ease, color 0.15s ease;
+}
+.dark .nav-item {
+    background: linear-gradient(to right, #21252b 50%, transparent 50%);
+    background-size: 205% 100%;
+    background-position: right center;
+}
+.nav-item:hover {
+    background-position: left center;
+}
 
 /* ============================================================
    DOCS PROSE — styles for goldmark-rendered markdown HTML

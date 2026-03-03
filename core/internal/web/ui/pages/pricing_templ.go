@@ -78,15 +78,11 @@ func PricingContent(userName string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>Project Platform | Pricing</title><div class=\"flex flex-col gap-24 py-12 relative\"><div class=\"absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none\" style=\"background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;\"></div><section class=\"relative z-10 flex flex-col items-center text-center gap-6\"><div class=\"inline-flex items-center gap-2 px-3 py-1.5 border border-zinc-300 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface text-[10px] font-bold tracking-widest text-zinc-500 dark:text-atom-muted uppercase\"><div class=\"w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.6)]\"></div>EARLY ACCESS — LIMITED SEATS</div><h1 class=\"text-5xl sm:text-6xl font-black tracking-tighter leading-[0.9]\"><span class=\"text-zinc-900 dark:text-white\">SIMPLE.</span> <span class=\"text-zinc-400 dark:text-atom-muted\">HONEST. </span> <span class=\"text-zinc-200 dark:text-atom-border\">PRICING.</span></h1><p class=\"text-sm text-zinc-500 dark:text-atom-muted max-w-lg leading-loose font-mono border-l-2 border-zinc-300 dark:border-atom-border pl-4 text-left\">We're in early access. Costs are tied directly to Hetzner infrastructure.<br>No surprises. No per-seat nonsense. No JavaScript tax.</p></section><section class=\"relative z-10 grid md:grid-cols-2 gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border max-w-4xl mx-auto w-full\"><div class=\"bg-white dark:bg-atom-bg p-8 flex flex-col gap-6\"><div class=\"flex flex-col gap-2\"><div class=\"flex items-center justify-between\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">01_</span> <span class=\"text-[9px] font-bold font-mono px-1.5 py-0.5 border border-green-300 dark:border-atom-green/40 text-green-600 dark:text-atom-green uppercase tracking-widest\">Early Access</span></div><h2 class=\"text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-widest\">Free</h2><div class=\"flex items-end gap-1 mt-1\"><span class=\"text-4xl font-black text-zinc-900 dark:text-white\">$0</span> <span class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5\">/ month</span></div><p class=\"text-xs text-zinc-500 dark:text-atom-muted font-mono leading-relaxed\">Limited seats while we're in alpha. First movers, forever free.</p></div><div class=\"border-t border-zinc-200 dark:border-atom-border\"></div><ul class=\"flex flex-col gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>Project Platform | Pricing</title><div class=\"flex flex-col gap-24 py-12 relative\"><div class=\"absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none\" style=\"background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;\"></div><section class=\"relative z-10 flex flex-col items-center text-center gap-6\"><div class=\"inline-flex items-center gap-2 px-3 py-1.5 border border-zinc-300 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface text-[10px] font-bold tracking-widest text-zinc-500 dark:text-atom-muted uppercase\"><div class=\"w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.6)]\"></div>EARLY ACCESS — LIMITED SEATS</div><h1 class=\"text-5xl sm:text-6xl font-black tracking-tighter leading-[0.9]\"><span class=\"text-zinc-900 dark:text-white\">SIMPLE.</span> <span class=\"text-zinc-400 dark:text-atom-muted\">FLAT. </span> <span class=\"text-zinc-200 dark:text-atom-border\">PRICING.</span></h1><p class=\"text-sm text-zinc-500 dark:text-atom-muted max-w-lg leading-loose font-mono border-l-2 border-zinc-300 dark:border-atom-border pl-4 text-left\">Early access. Free to start — no credit card required.<br>Upgrade when you need more.</p></section><section class=\"relative z-10 grid md:grid-cols-2 gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border max-w-4xl mx-auto w-full\"><div class=\"bg-white dark:bg-atom-bg p-8 flex flex-col gap-6\"><div class=\"flex flex-col gap-2\"><div class=\"flex items-center justify-between\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">01_</span> <span class=\"text-[9px] font-bold font-mono px-1.5 py-0.5 border border-green-300 dark:border-atom-green/40 text-green-600 dark:text-atom-green uppercase tracking-widest\">Early Access</span></div><h2 class=\"text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-widest\">Free</h2><div class=\"flex items-end gap-1 mt-1\"><span class=\"text-4xl font-black text-zinc-900 dark:text-white\">$0</span> <span class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5\">/ month</span></div><p class=\"text-xs text-zinc-500 dark:text-atom-muted font-mono leading-relaxed\">Get started solo. No credit card required. Build and ship real products at no cost.</p></div><div class=\"border-t border-zinc-200 dark:border-atom-border\"></div><ul class=\"flex flex-col divide-y divide-zinc-200 dark:divide-atom-border\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRow("check", "1 project", true).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = pricingFeatureRow("check", "Up to 3 services", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRow("check", "1 project, up to 3 services", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -94,7 +90,11 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRow("check", "Static binary builds", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRow("check", "Encrypted secrets management", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRow("check", "1 custom domain + auto TLS", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -106,15 +106,27 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = pricingFeatureRow("check", "10 GB egress / month", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRow("check", "200 build minutes / month", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRow("x", "Team members (solo workspace)", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRow("x", "Multiple projects", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = pricingFeatureRow("x", "Preview environments", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRow("x", "Native profiling (pprof / flamegraph)", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = pricingFeatureRow("x", "Encrypted secrets management", false).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRow("x", "Audit log", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -137,7 +149,7 @@ func PricingContent(userName string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div class=\"bg-zinc-900 dark:bg-atom-surface p-8 flex flex-col gap-6 relative overflow-hidden\"><div class=\"absolute inset-0 opacity-[0.04] pointer-events-none\" style=\"background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px); background-size: 24px 24px;\"></div><div class=\"relative z-10 flex flex-col gap-2\"><div class=\"flex items-center justify-between\"><span class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest\">02_</span> <span class=\"text-[9px] font-bold font-mono px-1.5 py-0.5 border border-amber-500/40 dark:border-atom-yellow/40 text-amber-400 dark:text-atom-yellow uppercase tracking-widest\">Coming Soon</span></div><h2 class=\"text-2xl font-black text-white uppercase tracking-widest\">Pro</h2><div class=\"flex items-end gap-1 mt-1\"><span class=\"text-4xl font-black text-white\">~$20</span> <span class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5\">/ month</span></div><p class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono leading-relaxed\">Exact pricing pending Hetzner cost analysis. No surprises.</p></div><div class=\"relative z-10 border-t border-zinc-700 dark:border-atom-border\"></div><ul class=\"relative z-10 flex flex-col gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div class=\"bg-zinc-900 dark:bg-atom-surface p-8 flex flex-col gap-6 relative overflow-hidden\"><div class=\"absolute inset-0 opacity-[0.04] pointer-events-none\" style=\"background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px); background-size: 24px 24px;\"></div><div class=\"relative z-10 flex flex-col gap-2\"><div class=\"flex items-center justify-between\"><span class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest\">02_</span> <span class=\"text-[9px] font-bold font-mono px-1.5 py-0.5 border border-amber-500/40 dark:border-atom-yellow/40 text-amber-400 dark:text-atom-yellow uppercase tracking-widest\">Coming Soon</span></div><h2 class=\"text-2xl font-black text-white uppercase tracking-widest\">Pro</h2><div class=\"flex items-end gap-1 mt-1\"><span class=\"text-4xl font-black text-white\">~$20</span> <span class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono mb-1.5\">/ month</span></div><p class=\"text-xs text-zinc-400 dark:text-atom-muted font-mono leading-relaxed\">A flat monthly rate that covers your whole team. No inflated tiers. No surprise overage charges.</p></div><div class=\"relative z-10 border-t border-zinc-700 dark:border-atom-border\"></div><ul class=\"relative z-10 flex flex-col divide-y divide-zinc-700 dark:divide-atom-border\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -145,15 +157,19 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Multiple projects", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Up to 10 projects", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRowDark("check", "No artificial compute caps", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Up to 10 services per project", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Go + Rust + Zig (when ready)", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Up to 5 team members (owner / member / viewer)", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Unlimited custom domains + auto TLS", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -161,11 +177,11 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Native profiling (pprof / flamegraph)", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Audit log + compliance exports", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Encrypted secrets management", true).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "Native profiling (pprof / flamegraph)", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -181,6 +197,14 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "100 GB egress / month", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFeatureRowDark("check", "2,000 build minutes / month", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</ul><div class=\"relative z-10 mt-auto pt-4\"><button disabled class=\"inline-flex w-full items-center justify-center gap-2 px-6 py-3 border border-zinc-700 dark:border-atom-border text-zinc-500 dark:text-atom-muted font-bold text-xs tracking-widest uppercase cursor-not-allowed opacity-50\"><i data-lucide=\"clock\" width=\"14\" height=\"14\"></i> Notify Me</button></div></div></section><section class=\"relative z-10 max-w-4xl mx-auto w-full\"><div class=\"mb-10\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -188,7 +212,7 @@ func PricingContent(userName string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("// FAQ")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 116, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 122, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -198,23 +222,27 @@ func PricingContent(userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFaqRow("What languages are supported?", "Go and Rust today. Zig is on the roadmap. No interpreted languages — ever. This platform is for compiled, static binary workloads only.").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFaqRow("What languages are supported?", "Go and Rust today. Zig is on the roadmap. The platform targets compiled, static binary workloads only — no interpreted runtimes or managed languages.").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFaqRow("Why only static binaries?", "Static binaries mean zero runtime dependencies, sub-millisecond cold starts, and scratch containers with a minimal attack surface. No interpreter, no JVM, no GC pause on your critical path.").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFaqRow("Why only static binaries?", "Static binaries have zero runtime dependencies, sub-millisecond cold starts, and run in scratch containers with a minimal attack surface. No interpreter overhead, no JVM, no GC pauses on your critical path.").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFaqRow("Why is free truly free?", "Early users help us find bugs and shape the platform. In return, founding users keep the free tier — even after Pro launches. We don't retroactively punish early adopters.").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFaqRow("How do teams work?", "Team features are available on Pro. Pro accounts support up to 5 members with owner, member, and viewer roles across up to 10 projects. The free tier is a solo workspace — one account, one project.").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFaqRow("How is Pro pricing determined?", "We're a solo-operated platform running on Hetzner. Pro pricing will reflect actual infrastructure cost plus a reasonable margin — no VC-inflated pricing, no surprise tiers.").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFaqRow("What are the resource limits?", "Limits are account-wide totals, not per service. Free: 128 MB RAM, 0.5 vCPU — more than enough for a static Go or Rust binary, which typically idles under 20 MB. Pro: 1 GB RAM, 2 vCPU — distribute across your services as needed. Limits are sized around actual workload reality, not inflated marketing numbers.").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = pricingFaqRow("What happens when I exceed the free tier limits?", "You'll be notified before anything is throttled. We won't silently downgrade or delete your deployments. You'll have time to migrate or upgrade.").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pricingFaqRow("How is Pro pricing determined?", "Pro pricing reflects actual infrastructure cost plus a margin. Pricing may change over time — we'll give notice before any changes take effect.").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = pricingFaqRow("What happens when I approach the free tier limits?", "You'll get a notification before anything is throttled. You'll have time to upgrade to Pro or reduce usage before any limits kick in.").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -225,13 +253,13 @@ func PricingContent(userName string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("// Limited seats")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 131, Col: 123}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 138, Col: 123}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><h2 class=\"text-3xl md:text-4xl font-black text-white tracking-tight mb-4\">Seats are limited.<br>Get in early.</h2><p class=\"text-sm text-zinc-400 dark:text-atom-muted mb-8 font-mono\">Free tier is yours to keep. No credit card. No bullshit.</p><div class=\"flex flex-col sm:flex-row gap-3 justify-center\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><h2 class=\"text-3xl md:text-4xl font-black text-white tracking-tight mb-4\">Seats are limited.<br>Get in early.</h2><p class=\"text-sm text-zinc-400 dark:text-atom-muted mb-8 font-mono\">No credit card. No hidden fees. Limits apply — see the table above.</p><div class=\"flex flex-col sm:flex-row gap-3 justify-center\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -275,7 +303,7 @@ func pricingFeatureRow(icon string, label string, enabled bool) templ.Component 
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<li class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<li class=\"flex items-center gap-3 py-2.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -287,7 +315,7 @@ func pricingFeatureRow(icon string, label string, enabled bool) templ.Component 
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 163, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 170, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -300,7 +328,7 @@ func pricingFeatureRow(icon string, label string, enabled bool) templ.Component 
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 164, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 171, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -318,7 +346,7 @@ func pricingFeatureRow(icon string, label string, enabled bool) templ.Component 
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 166, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 173, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -331,7 +359,7 @@ func pricingFeatureRow(icon string, label string, enabled bool) templ.Component 
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 167, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 174, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -371,7 +399,7 @@ func pricingFeatureRowDark(icon string, label string, enabled bool) templ.Compon
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<li class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<li class=\"flex items-center gap-3 py-2.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -383,7 +411,7 @@ func pricingFeatureRowDark(icon string, label string, enabled bool) templ.Compon
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 175, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 182, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -396,7 +424,7 @@ func pricingFeatureRowDark(icon string, label string, enabled bool) templ.Compon
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 176, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 183, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -414,7 +442,7 @@ func pricingFeatureRowDark(icon string, label string, enabled bool) templ.Compon
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 178, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 185, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -427,7 +455,7 @@ func pricingFeatureRowDark(icon string, label string, enabled bool) templ.Compon
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 179, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 186, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -467,14 +495,14 @@ func pricingFaqRow(question string, answer string) templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"bg-white dark:bg-atom-bg p-6 flex flex-col gap-2 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors\"><h3 class=\"text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"bg-white dark:bg-atom-bg p-6 flex flex-col gap-3 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors\"><h3 class=\"text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(question)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 186, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 193, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -487,7 +515,7 @@ func pricingFaqRow(question string, answer string) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(answer)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 187, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/pricing.templ`, Line: 194, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {

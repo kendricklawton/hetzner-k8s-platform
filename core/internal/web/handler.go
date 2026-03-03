@@ -13,6 +13,7 @@ import (
 // It owns the WorkOS OAuth flow but delegates all DB operations to the Core API.
 type Handler struct {
 	APIURL            string
+	BaseURL           string
 	InternalSecret    string
 	WorkOSAPIKey      string
 	WorkOSClientID    string
@@ -24,6 +25,7 @@ type Handler struct {
 // NewHandler creates a new Web Handler with all required dependencies.
 func NewHandler(
 	apiURL string,
+	baseURL string,
 	internalSecret string,
 	workOSAPIKey string,
 	workOSClientID string,
@@ -33,6 +35,7 @@ func NewHandler(
 ) *Handler {
 	return &Handler{
 		APIURL:            apiURL,
+		BaseURL:           baseURL,
 		InternalSecret:    internalSecret,
 		WorkOSAPIKey:      workOSAPIKey,
 		WorkOSClientID:    workOSClientID,
@@ -61,6 +64,44 @@ func (h *Handler) Splash(w http.ResponseWriter, r *http.Request) {
 	}
 
 	component := pages.SplashPage("INITIALIZING PLATFORM...", userName)
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// Changelog renders the changelog page.
+func (h *Handler) Changelog(w http.ResponseWriter, r *http.Request) {
+	userName := GetDisplayName(r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if h.isMainContentSwap(r) {
+		component := pages.ChangelogContent(userName)
+		if err := component.Render(r.Context(), w); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	component := pages.ChangelogPage(userName)
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// About renders the about page.
+func (h *Handler) About(w http.ResponseWriter, r *http.Request) {
+	userName := GetDisplayName(r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if h.isMainContentSwap(r) {
+		component := pages.AboutContent(userName)
+		if err := component.Render(r.Context(), w); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	component := pages.AboutPage(userName)
 	if err := component.Render(r.Context(), w); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
