@@ -49,7 +49,7 @@ func AboutPage(userName string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = components.Layout("Project Platform | About", userName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = components.Layout("About | Platform", userName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,14 +78,14 @@ func AboutContent(userName string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>Project Platform | About</title><div class=\"flex flex-col gap-24 py-12 relative\"><div class=\"absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none\" style=\"background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;\"></div><section class=\"relative z-10 flex flex-col gap-6 max-w-3xl\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>About | Platform</title><div class=\"flex flex-col gap-24 py-12 relative\"><section class=\"relative z-10 flex flex-col gap-6 max-w-3xl\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("// about")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 18, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 16, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +98,7 @@ func AboutContent(userName string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("// manifesto")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 33, Col: 117}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 31, Col: 117}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -131,7 +131,7 @@ func AboutContent(userName string) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("// infrastructure")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 46, Col: 122}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 44, Col: 122}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -144,7 +144,7 @@ func AboutContent(userName string) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs("// founder")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 54, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 52, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -157,7 +157,7 @@ func AboutContent(userName string) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("// languages")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 74, Col: 117}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 72, Col: 117}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -170,7 +170,7 @@ func AboutContent(userName string) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("// get started")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 105, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 103, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -227,7 +227,7 @@ func aboutManifestoCard(num string, title string, body string) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(num)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 136, Col: 104}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 134, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -240,7 +240,7 @@ func aboutManifestoCard(num string, title string, body string) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 137, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 135, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -253,7 +253,7 @@ func aboutManifestoCard(num string, title string, body string) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(body)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 138, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 136, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func aboutStackRow(name string, category string, description string) templ.Compo
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 145, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 143, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func aboutStackRow(name string, category string, description string) templ.Compo
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(category)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 146, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 144, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func aboutStackRow(name string, category string, description string) templ.Compo
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 148, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/about.templ`, Line: 146, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {

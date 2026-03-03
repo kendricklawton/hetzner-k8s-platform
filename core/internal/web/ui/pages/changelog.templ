@@ -3,16 +3,14 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ ChangelogPage(userName string) {
-	@components.Layout("Project Platform | Changelog", userName) {
+	@components.Layout("Changelog | Platform", userName) {
 		@ChangelogContent(userName)
 	}
 }
 
 templ ChangelogContent(userName string) {
-	<title>Project Platform | Changelog</title>
+	<title>Changelog | Platform</title>
 	<div class="flex flex-col gap-24 py-12 relative">
-		// Subtle grid background
-		<div class="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none" style="background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;"></div>
 		// ── HERO ──────────────────────────────────────────────────────────────
 		<section class="relative z-10 flex flex-col gap-6 max-w-3xl">
 			<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">{ "// changelog" }</span>

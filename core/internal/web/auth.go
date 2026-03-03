@@ -25,6 +25,10 @@ const (
 	// HttpOnly — read by Go on each request, not by JS.
 	nameCookieName = "platform_name"
 
+	// slugCookieName holds the user's team/account slug (e.g. "k-henry-team").
+	// Used to build slug-scoped URLs like /{slug}/services.
+	slugCookieName = "platform_slug"
+
 	// stateCookieName is the short-lived CSRF state cookie set during login.
 	stateCookieName = "auth_state"
 
@@ -50,6 +54,16 @@ func GetTokenFromContext(ctx context.Context) (string, bool) {
 // Returns an empty string if the user is not authenticated.
 func GetDisplayName(r *http.Request) string {
 	cookie, err := r.Cookie(nameCookieName)
+	if err != nil || cookie.Value == "" {
+		return ""
+	}
+	return cookie.Value
+}
+
+// GetSlug reads the team/account slug cookie for slug-scoped URL routing.
+// Returns an empty string if the user is not authenticated.
+func GetSlug(r *http.Request) string {
+	cookie, err := r.Cookie(slugCookieName)
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
@@ -174,6 +188,17 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		Expires:  exp,
 	})
 
+	// Slug cookie — HttpOnly, used to build slug-scoped URLs (e.g. /k-henry-team/services).
+	// TODO: derive from the database once team provisioning is wired up.
+	http.SetCookie(w, &http.Cookie{
+		Name:     slugCookieName,
+		Value:    "k-henry-team",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  exp,
+	})
+
 	// WorkOS session ID — extracted from the access token's `sid` claim.
 	// Stored so AuthLogout can revoke the WorkOS SSO session and prevent
 	// the identity provider (e.g. Google) from auto-logging the user back in.
@@ -190,7 +215,7 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		log.Printf("AuthCallback: could not extract WorkOS session ID: %v", err)
 	}
 
-	http.Redirect(w, r, "/dashboard", http.StatusFound)
+	http.Redirect(w, r, "/k-henry-team", http.StatusFound)
 }
 
 // AuthLogout clears all session cookies and redirects to the WorkOS logout URL,
@@ -204,7 +229,7 @@ func (h *Handler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 
 	// Delete all session cookies. MaxAge=-1 → Max-Age=0; Expires=epoch is
 	// belt-and-suspenders for browsers that don't honour Max-Age.
-	for _, name := range []string{SessionCookieName, nameCookieName, workosSessionCookieName, stateCookieName} {
+	for _, name := range []string{SessionCookieName, nameCookieName, slugCookieName, workosSessionCookieName, stateCookieName} {
 		http.SetCookie(w, &http.Cookie{
 			Name:     name,
 			Value:    "",

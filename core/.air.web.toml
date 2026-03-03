@@ -13,6 +13,8 @@ tmp_dir = "tmp"
   # Add a slight delay to allow multiple rapid saves to bundle into one build
   delay = 1000
   stop_on_error = true
+  # Kill any stale process holding the port before starting
+  pre_cmd = ["lsof -ti :8080 | xargs kill -9 2>/dev/null || true"]
   # Gracefully shut down the server so the port gets released properly
   send_interrupt = true
   kill_delay = 500

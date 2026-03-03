@@ -1,0 +1,359 @@
+package pages
+
+import (
+	"strings"
+
+	"github.com/kendricklawton/project-platform/core/internal/web/ui/components"
+)
+
+// ── CODE EXAMPLES ─────────────────────────────────────────────────────────────
+
+var tmplCode1 = `package main
+
+import "net/http"
+
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "text/html")
+        w.Write([]byte("<h1>Hello, Platform</h1>"))
+    })
+    http.ListenAndServe(":8080", nil)
+}`
+
+var tmplCode2 = `// Return an HTML fragment — HTMX swaps it into #clock.
+// No JSON. No serialization. Just HTML.
+
+http.HandleFunc("/time", func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "<span>%s</span>", time.Now().Format("15:04:05"))
+})
+
+// HTML template
+// <button hx-get='/time' hx-target='#clock' hx-swap='innerHTML'>
+//   Refresh
+// </button>
+// <div id='clock'>--:--:--</div>`
+
+var tmplCode3 = `<!-- Alpine.js via CDN script tag. No npm. No Node.js. -->
+
+<div x-data='{ count: 0 }' class='flex items-center gap-4'>
+  <button @click='count > 0 && count--'> - </button>
+  <span x-text='count' class='w-8 text-center tabular-nums'></span>
+  <button @click='count++'> + </button>
+</div>
+
+<div x-data='{ name: "" }'>
+  <input x-model='name' placeholder='Your name'>
+  <p x-show='name' x-text="'Hello, ' + name + '!'"></p>
+</div>`
+
+var tmplCode4 = `var catalog = []string{
+    "api-gateway", "auth-service",
+    "worker-pool", "edge-proxy",
+}
+
+http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+    q := strings.ToLower(r.URL.Query().Get("q"))
+    for _, svc := range catalog {
+        if strings.Contains(svc, q) {
+            fmt.Fprintf(w, "<li>%s</li>", html.EscapeString(svc))
+        }
+    }
+})
+
+// HTML
+// <input hx-get='/search' hx-target='#results'
+//        hx-trigger='keyup changed delay:300ms' name='q'
+//        placeholder='Filter services...'>
+// <ul id='results'></ul>`
+
+var tmplCode5 = `http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
+    r.ParseForm()
+    email := r.FormValue("email")
+    if !strings.Contains(email, "@") {
+        w.WriteHeader(422)
+        w.Write([]byte("<span class='err'>Valid email required.</span>"))
+        return
+    }
+    fmt.Fprintf(w, "<span class='ok'>Subscribed: %s</span>",
+        html.EscapeString(email))
+})
+
+// HTML: hx-post sends the form, hx-target shows the response
+// <form hx-post='/subscribe' hx-target='#msg'>
+//   <input name='email' type='email' placeholder='you@example.com'>
+//   <button type='submit'>Subscribe</button>
+// </form>
+// <div id='msg'></div>`
+
+var tmplCode6 = `<!-- Alpine modal — no React, no Vue, no framework -->
+
+<div x-data='{ open: false }'>
+  <button @click='open = true'>Open Modal</button>
+
+  <div
+    x-show='open'
+    class='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
+    @keydown.escape.window='open = false'
+    @click.self='open = false'
+  >
+    <div class='bg-white border p-6 max-w-md w-full font-mono'>
+      <h2 class='text-sm font-bold mb-4'>Confirm Action</h2>
+      <p class='text-xs mb-4'>This cannot be undone.</p>
+      <div class='flex gap-3'>
+        <button @click='open = false'>Cancel</button>
+        <button @click='confirm(); open = false'>Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>`
+
+var tmplCode7 = `var (
+    mu    sync.Mutex
+    todos []string
+)
+
+// Add a todo item and re-render the list
+http.HandleFunc("/todos/add", func(w http.ResponseWriter, r *http.Request) {
+    r.ParseForm()
+    item := html.EscapeString(r.FormValue("item"))
+    mu.Lock()
+    todos = append(todos, item)
+    mu.Unlock()
+    renderList(w, todos)
+})
+
+// Delete by index and re-render
+http.HandleFunc("/todos/delete", func(w http.ResponseWriter, r *http.Request) {
+    r.ParseForm()
+    i, _ := strconv.Atoi(r.FormValue("i"))
+    mu.Lock()
+    todos = slices.Delete(todos, i, i+1)
+    mu.Unlock()
+    renderList(w, todos)
+})`
+
+var tmplCode8 = `// Server-Sent Events — Go pushes updates, HTMX listens.
+http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/event-stream")
+    w.Header().Set("Cache-Control", "no-cache")
+    w.Header().Set("Connection", "keep-alive")
+    flusher := w.(http.Flusher)
+
+    for {
+        select {
+        case <-r.Context().Done():
+            return // client disconnected
+        case msg := <-broadcast:
+            fmt.Fprintf(w, "data: <li>%s</li>\n\n", msg)
+            flusher.Flush()
+        }
+    }
+})
+
+// HTML — HTMX SSE extension appends fragments as they arrive
+// <ul hx-ext='sse' sse-connect='/events'
+//     sse-swap='message' hx-swap='beforeend'></ul>`
+
+var tmplCode9 = `const pageSize = 20
+
+http.HandleFunc("/items", func(w http.ResponseWriter, r *http.Request) {
+    page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+    items := store.FetchPage(page, pageSize)
+
+    for i, item := range items {
+        if i == len(items)-1 {
+            // Last item loads the next page when scrolled into view
+            next := fmt.Sprintf("/items?page=%d", page+1)
+            fmt.Fprintf(w,
+                "<div hx-get='%s' hx-trigger='revealed' hx-swap='afterend'>%s</div>",
+                next, item.Name)
+        } else {
+            fmt.Fprintf(w, "<div>%s</div>", item.Name)
+        }
+    }
+})`
+
+var tmplCode10 = `<!-- Alpine tab state + HTMX lazy-loads content on first switch -->
+
+<div x-data='{ tab: "overview" }'>
+  <nav class='flex border-b font-mono text-xs'>
+    <button
+      @click='tab = "overview"'
+      :class='{ "border-b-2 border-black font-bold": tab === "overview" }'
+      class='px-4 py-2 uppercase tracking-widest'
+    >Overview</button>
+    <button
+      @click='tab = "logs"'
+      hx-get='/tab/logs'
+      hx-target='#tab-panel'
+      :class='{ "border-b-2 border-black font-bold": tab === "logs" }'
+      class='px-4 py-2 uppercase tracking-widest'
+    >Logs</button>
+    <button
+      @click='tab = "metrics"'
+      hx-get='/tab/metrics'
+      hx-target='#tab-panel'
+      :class='{ "border-b-2 border-black font-bold": tab === "metrics" }'
+      class='px-4 py-2 uppercase tracking-widest'
+    >Metrics</button>
+  </nav>
+  <div id='tab-panel' class='p-4 text-xs'>
+    Select a tab to load content.
+  </div>
+</div>`
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+func escapeCode(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
+}
+
+// ── COMPONENTS ────────────────────────────────────────────────────────────────
+
+templ codeDisplay(code string) {
+	<pre class="p-5 text-[11px] font-mono leading-relaxed text-zinc-800 dark:text-atom-fg overflow-x-auto whitespace-pre m-0">@templ.Raw(escapeCode(code))</pre>
+}
+
+templ tmplCard(num string, title string, desc string, tags string) {
+	<div
+		class="border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg"
+		x-data="{ open: false }"
+	>
+		<div
+			class="flex items-start justify-between gap-4 px-5 py-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors select-none"
+			@click="open = !open"
+		>
+			<div class="flex flex-col gap-2 min-w-0">
+				<div class="flex items-center gap-3">
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0">{ num }</span>
+					<span class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest truncate">{ title }</span>
+				</div>
+				<p class="text-[11px] font-mono text-zinc-500 dark:text-atom-muted leading-relaxed">{ desc }</p>
+				<div class="flex flex-wrap gap-1.5">
+					for _, tag := range strings.Split(tags, ",") {
+						<span class="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 border border-zinc-200 dark:border-atom-border text-zinc-500 dark:text-atom-muted">{ strings.TrimSpace(tag) }</span>
+					}
+				</div>
+			</div>
+			<div class="flex items-center gap-3 shrink-0">
+				<button
+					disabled
+					class="px-4 py-1.5 border border-zinc-200 dark:border-atom-border text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-atom-muted cursor-not-allowed opacity-50"
+					@click.stop
+				>
+					Deploy
+				</button>
+				<span class="text-zinc-400 dark:text-atom-muted" x-show="!open">
+					<i data-lucide="chevron-down" width="14" height="14"></i>
+				</span>
+				<span class="text-zinc-400 dark:text-atom-muted" x-show="open" style="display:none">
+					<i data-lucide="chevron-up" width="14" height="14"></i>
+				</span>
+			</div>
+		</div>
+		<div x-show="open" style="display:none" class="border-t border-zinc-200 dark:border-atom-border">
+			<div class="flex items-center gap-1.5 px-4 py-2 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">
+				<div class="w-2 h-2 bg-red-400 dark:bg-atom-red opacity-70"></div>
+				<div class="w-2 h-2 bg-yellow-400 dark:bg-atom-yellow opacity-70"></div>
+				<div class="w-2 h-2 bg-green-400 dark:bg-atom-green opacity-70"></div>
+				<span class="ml-3 text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">{ title }</span>
+			</div>
+			{ children... }
+		</div>
+	</div>
+}
+
+// ── PAGE ──────────────────────────────────────────────────────────────────────
+
+templ TemplatesPage(userName string) {
+	@components.Layout("Templates | Platform", userName) {
+		@TemplatesContent(userName)
+	}
+}
+
+templ TemplatesContent(userName string) {
+	<div class="flex flex-col gap-24 py-12">
+		// ── HERO ──────────────────────────────────────────────────────────────
+		<section class="relative z-10 flex flex-col gap-6 max-w-3xl">
+			<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">{ "// templates" }</span>
+			<h1 class="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight uppercase">
+				Go + HTMX + Alpine
+			</h1>
+			<p class="text-sm text-zinc-500 dark:text-atom-muted font-mono leading-loose border-l-2 border-zinc-300 dark:border-atom-border pl-4">
+				Ten copy-paste patterns for building server-rendered UIs.
+				No Node.js. No npm. No build pipeline.
+				Click any template to view the source, then deploy directly to Platform.
+			</p>
+		</section>
+		// ── TEMPLATE CARDS ────────────────────────────────────────────────────
+		<section class="relative z-10">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+				@tmplCard("01", "Hello World", "Minimal Go HTTP server. Single file, zero dependencies.", "Go") {
+					@codeDisplay(tmplCode1)
+				}
+				@tmplCard("02", "HTMX Fragment Swap", "Go handler returns an HTML fragment. HTMX swaps it into the DOM. No JSON.", "Go, HTMX") {
+					@codeDisplay(tmplCode2)
+				}
+				@tmplCard("03", "Alpine Reactive UI", "Client-side reactive state via Alpine x-data. No virtual DOM. Zero build toolchain.", "Alpine") {
+					@codeDisplay(tmplCode3)
+				}
+				@tmplCard("04", "Live Search", "HTMX fires a GET on each keyup with debounce. Go filters and returns matching HTML rows.", "Go, HTMX") {
+					@codeDisplay(tmplCode4)
+				}
+				@tmplCard("05", "Form Validation", "HTMX form POST on blur. Go validates server-side and returns an inline error or success.", "Go, HTMX") {
+					@codeDisplay(tmplCode5)
+				}
+				@tmplCard("06", "Alpine Modal", "Overlay dialog driven entirely by Alpine state. No JS file. Keyboard accessible.", "Alpine") {
+					@codeDisplay(tmplCode6)
+				}
+				@tmplCard("07", "Todo List", "Add and delete items. Go holds state, HTMX re-renders the list on each mutation.", "Go, HTMX") {
+					@codeDisplay(tmplCode7)
+				}
+				@tmplCard("08", "SSE Live Feed", "Go streams Server-Sent Events. HTMX SSE extension injects each event into the DOM.", "Go, HTMX") {
+					@codeDisplay(tmplCode8)
+				}
+				@tmplCard("09", "Infinite Scroll", "Cursor-based pagination. Last item triggers next page load when scrolled into view.", "Go, HTMX") {
+					@codeDisplay(tmplCode9)
+				}
+				@tmplCard("10", "Tabbed Content", "Alpine drives active tab state. HTMX lazy-loads each panel on first switch.", "Alpine, HTMX") {
+					@codeDisplay(tmplCode10)
+				}
+			</div>
+		</section>
+		// ── DEPLOY CTA ────────────────────────────────────────────────────────
+		<section class="relative z-10 border border-zinc-200 dark:border-atom-border bg-zinc-900 dark:bg-atom-surface p-10 text-center overflow-hidden">
+			<div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px); background-size: 24px 24px;"></div>
+			<div class="relative z-10 flex flex-col items-center gap-6">
+				<p class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest">{ "// deploy it" }</p>
+				<h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">
+					Push your binary. We run it.
+				</h2>
+				<p class="text-sm text-zinc-400 dark:text-atom-muted font-mono max-w-md">
+					No Dockerfile. No Node layer. Just
+					<code class="text-atom-green">go build</code>
+					and push.
+				</p>
+				<div class="flex flex-col sm:flex-row gap-3 justify-center">
+					if userName != "" {
+						<a href="/dashboard" class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-bold text-xs tracking-widest uppercase hover:opacity-90 transition-opacity">
+							<i data-lucide="layout-dashboard" width="14" height="14"></i>
+							Enter Workspace
+						</a>
+					} else {
+						<a href="/auth/login" class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black font-bold text-xs tracking-widest uppercase hover:opacity-90 transition-opacity">
+							<i data-lucide="log-in" width="14" height="14"></i>
+							Get Started
+						</a>
+					}
+					<a href="/docs/getting-started/quickstart" hx-get="/docs/getting-started/quickstart" hx-target="#main-content" hx-push-url="/docs/getting-started/quickstart" class="inline-flex items-center justify-center gap-2 px-8 py-3 border border-zinc-700 dark:border-atom-border text-zinc-300 dark:text-atom-muted font-bold text-xs tracking-widest uppercase hover:border-white hover:text-white transition-colors">
+						<i data-lucide="book-open" width="14" height="14"></i>
+						Read the Docs
+					</a>
+				</div>
+			</div>
+		</section>
+	</div>
+}

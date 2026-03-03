@@ -131,61 +131,23 @@ templ SplashContent(status string, userName string) {
 		</section>
 		// ── STATS BAR ─────────────────────────────────────────────────────────
 		<section class="relative z-10">
-			<div class="grid grid-cols-8 lg:grid-cols-16">
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-			</div>
-			<div class="py-10">
-				<div class="grid grid-cols-2 gap-8 md:flex md:justify-between md:gap-0">
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">sub-ms</span>
-						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Cold Start</span>
-					</div>
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">zero</span>
-						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">SDK Required</span>
-					</div>
-					<div class="flex flex-col gap-1">
-						<span class="text-xl font-black text-zinc-900 dark:text-white tracking-tight mt-1">Go · Rust</span>
-						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Languages</span>
-					</div>
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-black text-zinc-400 dark:text-atom-muted tracking-tight">Zig</span>
-						<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Coming Next</span>
-					</div>
+			<div class="border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-zinc-200 dark:divide-atom-border">
+				<div class="flex flex-col gap-1.5 px-8 py-7">
+					<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">sub-ms</span>
+					<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Cold Start</span>
 				</div>
-			</div>
-			<div class="grid grid-cols-8 lg:grid-cols-16">
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
+				<div class="flex flex-col gap-1.5 px-8 py-7">
+					<span class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">zero</span>
+					<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">SDK Required</span>
+				</div>
+				<div class="flex flex-col gap-1.5 px-8 py-7">
+					<span class="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Go · Rust</span>
+					<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Languages</span>
+				</div>
+				<div class="flex flex-col gap-1.5 px-8 py-7">
+					<span class="text-3xl font-black text-zinc-300 dark:text-atom-border tracking-tight">Zig</span>
+					<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Coming Next</span>
+				</div>
 			</div>
 		</section>
 		// ── FEATURES ──────────────────────────────────────────────────────────
@@ -260,25 +222,7 @@ templ SplashContent(status string, userName string) {
 		</section>
 		// ── PIPELINE LOG ──────────────────────────────────────────────────────
 		<section class="relative z-10">
-			<div class="grid grid-cols-8 lg:grid-cols-16">
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-			</div>
-			<div class="">
+			<div class="border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg">
 				// Terminal chrome
 				<div class="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface">
 					<div class="flex items-center gap-1.5">
@@ -304,24 +248,6 @@ templ SplashContent(status string, userName string) {
 					@splashLogLine("00:20.100", "INFO", "Pushing artifact to registry...", "default")
 					@splashLogLine("00:20.550", "SUCCESS", "DEPLOYMENT LIVE → https://api.platform.dev", "success")
 				</div>
-			</div>
-			<div class="grid grid-cols-8 lg:grid-cols-16">
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
-				<div class="aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block" aria-hidden="true"></div>
 			</div>
 		</section>
 		// ── CTA BANNER ────────────────────────────────────────────────────────

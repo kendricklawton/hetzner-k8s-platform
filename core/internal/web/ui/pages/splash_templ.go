@@ -249,14 +249,14 @@ func SplashContent(status string, userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div></div></div></div></section><section class=\"relative z-10\"><div class=\"grid grid-cols-8 lg:grid-cols-16\"><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div></div><div class=\"py-10\"><div class=\"grid grid-cols-2 gap-8 md:flex md:justify-between md:gap-0\"><div class=\"flex flex-col gap-1\"><span class=\"text-3xl font-black text-zinc-900 dark:text-white tracking-tight\">sub-ms</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Cold Start</span></div><div class=\"flex flex-col gap-1\"><span class=\"text-3xl font-black text-zinc-900 dark:text-white tracking-tight\">zero</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">SDK Required</span></div><div class=\"flex flex-col gap-1\"><span class=\"text-xl font-black text-zinc-900 dark:text-white tracking-tight mt-1\">Go · Rust</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Languages</span></div><div class=\"flex flex-col gap-1\"><span class=\"text-3xl font-black text-zinc-400 dark:text-atom-muted tracking-tight\">Zig</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Coming Next</span></div></div></div><div class=\"grid grid-cols-8 lg:grid-cols-16\"><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div></div></section><section class=\"relative z-10\"><div class=\"mb-10\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div></div></div></div></section><section class=\"relative z-10\"><div class=\"border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-zinc-200 dark:divide-atom-border\"><div class=\"flex flex-col gap-1.5 px-8 py-7\"><span class=\"text-3xl font-black text-zinc-900 dark:text-white tracking-tight\">sub-ms</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Cold Start</span></div><div class=\"flex flex-col gap-1.5 px-8 py-7\"><span class=\"text-3xl font-black text-zinc-900 dark:text-white tracking-tight\">zero</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">SDK Required</span></div><div class=\"flex flex-col gap-1.5 px-8 py-7\"><span class=\"text-2xl font-black text-zinc-900 dark:text-white tracking-tight\">Go · Rust</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Languages</span></div><div class=\"flex flex-col gap-1.5 px-8 py-7\"><span class=\"text-3xl font-black text-zinc-300 dark:text-atom-border tracking-tight\">Zig</span> <span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">Coming Next</span></div></div></section><section class=\"relative z-10\"><div class=\"mb-10\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs("// Zero-SDK")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 194, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 156, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func SplashContent(status string, userName string) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs("// platform-cli")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 215, Col: 120}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 177, Col: 120}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -427,7 +427,7 @@ func SplashContent(status string, userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div></section><section class=\"relative z-10\"><div class=\"grid grid-cols-8 lg:grid-cols-16\"><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b lg:border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-b border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div></div><div class=\"\"><div class=\"flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface\"><div class=\"flex items-center gap-1.5\"><div class=\"w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-atom-red opacity-80\"></div><div class=\"w-2.5 h-2.5 rounded-full bg-yellow-400 dark:bg-atom-yellow opacity-80\"></div><div class=\"w-2.5 h-2.5 rounded-full bg-green-400 dark:bg-atom-green opacity-80\"></div></div><span class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest\">Execution Pipeline — Rust Build</span> <span class=\"inline-flex items-center gap-1.5 text-[10px] font-mono text-green-600 dark:text-atom-green\"><span class=\"w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-atom-green animate-pulse inline-block\"></span> LIVE</span></div><div class=\"p-6 font-mono text-xs leading-loose overflow-x-auto\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div></section><section class=\"relative z-10\"><div class=\"border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg\"><div class=\"flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface\"><div class=\"flex items-center gap-1.5\"><div class=\"w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-atom-red opacity-80\"></div><div class=\"w-2.5 h-2.5 rounded-full bg-yellow-400 dark:bg-atom-yellow opacity-80\"></div><div class=\"w-2.5 h-2.5 rounded-full bg-green-400 dark:bg-atom-green opacity-80\"></div></div><span class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest\">Execution Pipeline — Rust Build</span> <span class=\"inline-flex items-center gap-1.5 text-[10px] font-mono text-green-600 dark:text-atom-green\"><span class=\"w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-atom-green animate-pulse inline-block\"></span> LIVE</span></div><div class=\"p-6 font-mono text-xs leading-loose overflow-x-auto\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -467,14 +467,14 @@ func SplashContent(status string, userName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div><div class=\"grid grid-cols-8 lg:grid-cols-16\"><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t lg:border-r border-zinc-200 dark:border-atom-border\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-r border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div><div class=\"aspect-square border-t border-zinc-200 dark:border-atom-border hidden lg:block\" aria-hidden=\"true\"></div></div></section><section class=\"relative z-10 border border-zinc-200 dark:border-atom-border bg-zinc-900 dark:bg-atom-surface p-10 md:p-16 text-center overflow-hidden\"><div class=\"absolute inset-0 opacity-[0.04] pointer-events-none\" style=\"background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px); background-size: 24px 24px;\"></div><div class=\"relative z-10\"><p class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest mb-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div></section><section class=\"relative z-10 border border-zinc-200 dark:border-atom-border bg-zinc-900 dark:bg-atom-surface p-10 md:p-16 text-center overflow-hidden\"><div class=\"absolute inset-0 opacity-[0.04] pointer-events-none\" style=\"background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px); background-size: 24px 24px;\"></div><div class=\"relative z-10\"><p class=\"text-[10px] font-mono text-zinc-500 dark:text-atom-muted uppercase tracking-widest mb-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs("// Ship it")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 331, Col: 117}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 257, Col: 117}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -531,7 +531,7 @@ func splashFeatureCard(num string, icon string, title string, desc string, lang 
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 366, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 292, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -544,7 +544,7 @@ func splashFeatureCard(num string, icon string, title string, desc string, lang 
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(num)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 368, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 294, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -577,7 +577,7 @@ func splashFeatureCard(num string, icon string, title string, desc string, lang 
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 378, Col: 176}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 304, Col: 176}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -590,7 +590,7 @@ func splashFeatureCard(num string, icon string, title string, desc string, lang 
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(desc)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 379, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 305, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -632,7 +632,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(timestamp)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 386, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 312, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -650,7 +650,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(level)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 388, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 314, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -663,7 +663,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 388, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 314, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -681,7 +681,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(level)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 390, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 316, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -694,7 +694,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 390, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 316, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -712,7 +712,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(level)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 392, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 318, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -725,7 +725,7 @@ func splashLogLine(timestamp string, level string, message string, variant strin
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 392, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 318, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -773,7 +773,7 @@ func splashCLILine(lineType string, text string) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 401, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 327, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -791,7 +791,7 @@ func splashCLILine(lineType string, text string) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 406, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 332, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -809,7 +809,7 @@ func splashCLILine(lineType string, text string) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 409, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 335, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -827,7 +827,7 @@ func splashCLILine(lineType string, text string) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 411, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 337, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -875,7 +875,7 @@ func splashCLICmd(cmd string, args string, desc string) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(cmd)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 420, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 346, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -893,7 +893,7 @@ func splashCLICmd(cmd string, args string, desc string) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(args)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 422, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 348, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -911,7 +911,7 @@ func splashCLICmd(cmd string, args string, desc string) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(desc)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 425, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/splash.templ`, Line: 351, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {

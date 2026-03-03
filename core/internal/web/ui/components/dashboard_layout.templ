@@ -1,0 +1,313 @@
+package components
+
+templ DashboardLayout(title string, userName string, slug string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+			<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet"/>
+			<link rel="stylesheet" href="/static/styles.css"/>
+			<style>
+				[x-cloak] { display: none !important; }
+				.scroll-container > div { content-visibility: auto; contain-intrinsic-size: auto 44px; }
+			</style>
+			// Theme — blocking script prevents FOUC
+			<script>
+				if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+					document.documentElement.classList.add('dark');
+				}
+				window.toggleTheme = function() {
+					document.documentElement.classList.add('theme-transition');
+					if (document.documentElement.classList.contains('dark')) {
+						document.documentElement.classList.remove('dark');
+						localStorage.theme = 'light';
+					} else {
+						document.documentElement.classList.add('dark');
+						localStorage.theme = 'dark';
+					}
+					setTimeout(function() { document.documentElement.classList.remove('theme-transition'); }, 500);
+				}
+			</script>
+			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+			<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+			<script src="https://unpkg.com/lucide@latest"></script>
+			<script>
+				document.addEventListener("DOMContentLoaded", () => { lucide.createIcons(); });
+				document.addEventListener('htmx:afterSwap', () => { lucide.createIcons(); });
+			</script>
+			<script>
+				// Active nav — toggle state classes without overwriting layout classes.
+				var NAV_ACTIVE_ADD    = ['font-bold','text-zinc-900','dark:text-white','bg-zinc-100','dark:bg-atom-surface','border-zinc-900','dark:border-white'];
+				var NAV_ACTIVE_REMOVE = ['text-zinc-500','dark:text-atom-muted','hover:text-zinc-900','dark:hover:text-atom-fg','hover:bg-zinc-50','dark:hover:bg-atom-surface','border-transparent'];
+				function updateDashNav() {
+					var p = window.location.pathname;
+					document.querySelectorAll('[data-dash-href]').forEach(function(a) {
+						var active = a.dataset.dashHref === p;
+						NAV_ACTIVE_ADD.forEach(function(c) { a.classList.toggle(c, active); });
+						NAV_ACTIVE_REMOVE.forEach(function(c) { a.classList.toggle(c, !active); });
+					});
+				}
+				document.addEventListener('DOMContentLoaded', updateDashNav);
+				document.addEventListener('htmx:pushedIntoHistory', updateDashNav);
+				document.addEventListener('htmx:replacedInHistory', updateDashNav);
+			</script>
+		</head>
+		<body
+			class="bg-zinc-50 dark:bg-atom-bg text-zinc-900 dark:text-atom-fg font-mono selection:bg-atom-blue/30"
+			style="height: 100dvh; display: flex; overflow: hidden;"
+			x-data="{ sidebarOpen: window.innerWidth >= 1024, paletteOpen: false }"
+			x-init="window.addEventListener('resize', () => { sidebarOpen = window.innerWidth >= 1024 })"
+			@keydown.window="if (($event.metaKey || $event.ctrlKey) &amp;&amp; $event.key === 'k') { $event.preventDefault(); paletteOpen = !paletteOpen; }"
+		>
+			// ── SIDEBAR BACKDROP (mobile/tablet) ────────────────────────────────
+			<div
+				x-show="sidebarOpen"
+				x-cloak
+				class="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+				@click="sidebarOpen = false"
+			></div>
+			// ── SIDEBAR ──────────────────────────────────────────────────────────
+			<aside
+				class="flex flex-col border-r border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg overflow-hidden fixed inset-y-0 left-0 z-40 w-56 lg:relative lg:z-auto lg:transition-[width] lg:duration-150"
+				:class="sidebarOpen ? 'translate-x-0 lg:w-56' : '-translate-x-full lg:translate-x-0 lg:w-12'"
+				style="transition: transform 0.15s;"
+			>
+				// Sidebar header: brand + toggle
+				<div class="h-14 flex items-center shrink-0 border-b border-zinc-200 dark:border-atom-border overflow-hidden">
+					<span
+						x-show="sidebarOpen"
+						class="pl-5 text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest whitespace-nowrap"
+					>Platform</span>
+					<button
+						@click="sidebarOpen = !sidebarOpen"
+						class="flex items-center justify-center w-6 h-6 text-zinc-400 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg transition-colors shrink-0"
+						:class="sidebarOpen ? 'ml-auto mr-4' : 'mx-auto'"
+						aria-label="Toggle sidebar"
+					>
+						<i data-lucide="panel-left" width="16" height="16"></i>
+					</button>
+				</div>
+				// Search trigger
+				<div
+					class="shrink-0 border-b border-zinc-200 dark:border-atom-border"
+					:class="sidebarOpen ? 'px-3 py-2' : 'p-1'"
+				>
+					<button
+						@click="paletteOpen = true"
+						class="flex items-center w-full py-2 text-xs text-zinc-500 dark:text-atom-muted hover:text-zinc-600 dark:hover:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
+						:class="sidebarOpen ? 'px-3 gap-3' : 'justify-center px-1'"
+					>
+						<i data-lucide="search" width="14" height="14" class="shrink-0"></i>
+						<span x-show="sidebarOpen" class="flex-1 text-left truncate">Find...</span>
+						<kbd x-show="sidebarOpen" class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted px-1.5 py-0.5 border border-zinc-200 dark:border-atom-border">K</kbd>
+					</button>
+				</div>
+				// Nav
+				<nav
+					class="flex flex-col gap-1 flex-1 overflow-y-auto overflow-x-hidden"
+					:class="sidebarOpen ? 'p-3' : 'p-1'"
+				>
+					@DashNavItem("layout-dashboard", "Overview", "/"+slug)
+					@DashNavItem("box", "Services", "/"+slug+"/services")
+					@DashNavItem("rocket", "Deployments", "/"+slug+"/deployments")
+					@DashNavItem("scroll-text", "Logs", "/"+slug+"/logs")
+					@DashNavItem("key", "Secrets", "/"+slug+"/secrets")
+					<div class="my-1 border-t border-zinc-200 dark:border-atom-border" :class="sidebarOpen ? 'mx-1' : 'mx-0'"></div>
+					@DashNavItem("globe", "Domains", "/"+slug+"/domains")
+					@DashNavItem("settings", "Settings", "/"+slug+"/settings")
+				</nav>
+				// Bottom actions
+				<div
+					class="flex flex-col gap-1 border-t border-zinc-200 dark:border-atom-border shrink-0"
+					:class="sidebarOpen ? 'p-3' : 'p-1'"
+				>
+					@DashNavItem("life-buoy", "Support", "/"+slug+"/support")
+					@DashSidebarAction("log-out", "Sign Out", "/auth/logout")
+				</div>
+			</aside>
+			// ── MAIN ─────────────────────────────────────────────────────────────
+			<div class="flex-1 min-w-0 flex flex-col">
+				// Content header: userName | Projects dropdown | right actions
+				<header class="h-14 shrink-0 flex items-center border-b border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-bg">
+					// Mobile sidebar toggle
+					<button
+						@click="sidebarOpen = true"
+						class="flex items-center justify-center w-12 h-full border-r border-zinc-200 dark:border-atom-border text-zinc-400 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg lg:hidden shrink-0"
+						aria-label="Open sidebar"
+					>
+						<i data-lucide="menu" width="16" height="16"></i>
+					</button>
+					// userName
+					<div class="flex items-center px-5 h-full border-r border-zinc-200 dark:border-atom-border shrink-0">
+						<span class="text-sm font-bold text-zinc-900 dark:text-white whitespace-nowrap">{ userName }</span>
+					</div>
+					// Projects dropdown
+					<div
+						class="flex items-center px-4 h-full relative shrink-0"
+						x-data="{ open: false }"
+						@click.outside="open = false"
+						@keydown.escape.window="open = false"
+					>
+						<button
+							@click="open = !open"
+							class="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-atom-surface text-[11px] font-bold uppercase tracking-widest text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white transition-colors"
+						>
+							Projects
+							<i data-lucide="chevron-down" width="12" height="12" class="text-zinc-400 dark:text-atom-muted"></i>
+						</button>
+						<div
+							x-show="open"
+							x-cloak
+							class="absolute left-4 top-full mt-1 w-64 z-50 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg shadow-lg"
+						>
+							<div class="p-2 border-b border-zinc-200 dark:border-atom-border">
+								<div class="flex items-center gap-2 px-2 py-1.5 border border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">
+									<i data-lucide="search" width="11" height="11" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+									<input
+										type="text"
+										placeholder="Search projects..."
+										class="flex-1 bg-transparent text-[11px] font-mono text-zinc-900 dark:text-atom-fg placeholder-zinc-400 dark:placeholder-atom-muted outline-none"
+									/>
+								</div>
+							</div>
+							<div class="flex flex-col max-h-48 overflow-y-auto">
+								<div class="flex flex-col items-center justify-center py-8 gap-2">
+									<i data-lucide="folder-open" width="14" height="14" class="text-zinc-300 dark:text-atom-border"></i>
+									<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted">No projects yet.</span>
+								</div>
+							</div>
+							<div class="border-t border-zinc-200 dark:border-atom-border p-1.5">
+								<a
+									href={ templ.SafeURL("/"+slug+"/new") }
+									class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-900 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors w-full"
+								>
+									<i data-lucide="plus" width="11" height="11"></i>
+									New Project
+								</a>
+							</div>
+						</div>
+					</div>
+					// Right: theme toggle + avatar
+					<div class="ml-auto flex items-center divide-x divide-zinc-200 dark:divide-atom-border h-full">
+						<button
+							onclick="toggleTheme()"
+							class="h-full px-4 flex items-center text-zinc-400 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg transition-colors"
+						>
+							<i data-lucide="sun" width="14" height="14" class="dark:hidden"></i>
+							<i data-lucide="moon" width="14" height="14" class="hidden dark:block"></i>
+						</button>
+						<div class="h-full px-4 flex items-center">
+							<div class="w-7 h-7 bg-zinc-900 dark:bg-white flex items-center justify-center shrink-0">
+								if len(userName) > 0 {
+									<span class="text-[10px] font-bold text-white dark:text-zinc-900 uppercase leading-none">{ string([]rune(userName)[0:1]) }</span>
+								}
+							</div>
+						</div>
+					</div>
+				</header>
+				// Scrollable content
+				<div
+					id="dashboard-content"
+					class="flex-1 min-w-0 overflow-y-auto"
+				>
+					{ children... }
+				</div>
+			</div>
+			// ── COMMAND PALETTE ──────────────────────────────────────────────
+			<div
+				x-show="paletteOpen"
+				x-cloak
+				class="fixed inset-0 z-50"
+				@keydown.escape.window="paletteOpen = false"
+			>
+				// Backdrop
+				<div
+					class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+					@click="paletteOpen = false"
+				></div>
+				// Panel
+				<div class="relative z-10 w-full max-w-lg mx-auto mt-[15vh]">
+					<div
+						class="border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg shadow-2xl"
+						@click.outside="paletteOpen = false"
+					>
+						// Search input
+						<div class="flex items-center gap-3 px-4 py-3 border-b border-zinc-200 dark:border-atom-border">
+							<i data-lucide="search" width="15" height="15" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+							<input
+								type="text"
+								placeholder="Type a command or search..."
+								class="flex-1 bg-transparent text-sm font-mono text-zinc-900 dark:text-atom-fg placeholder-zinc-400 dark:placeholder-atom-muted outline-none"
+								x-ref="paletteInput"
+								x-init="$watch('paletteOpen', val => { if (val) $nextTick(() => $refs.paletteInput.focus()) })"
+							/>
+							<kbd class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted px-1.5 py-0.5 border border-zinc-200 dark:border-atom-border">ESC</kbd>
+						</div>
+						// Navigation items
+						<div class="py-2 max-h-80 overflow-y-auto">
+							<div class="px-3 py-1">
+								<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Navigation</span>
+							</div>
+							@DashPaletteItem("layout-dashboard", "Overview", "/"+slug)
+							@DashPaletteItem("box", "Services", "/"+slug+"/services")
+							@DashPaletteItem("rocket", "Deployments", "/"+slug+"/deployments")
+							@DashPaletteItem("scroll-text", "Logs", "/"+slug+"/logs")
+							@DashPaletteItem("key", "Secrets", "/"+slug+"/secrets")
+							@DashPaletteItem("globe", "Domains", "/"+slug+"/domains")
+							@DashPaletteItem("settings", "Settings", "/"+slug+"/settings")
+							<div class="my-1 mx-3 border-t border-zinc-100 dark:border-atom-border"></div>
+							@DashPaletteItem("life-buoy", "Support", "/"+slug+"/support")
+						</div>
+					</div>
+				</div>
+			</div>
+		</body>
+	</html>
+}
+
+templ DashPaletteItem(icon string, label string, href string) {
+	<a
+		href={ templ.SafeURL(href) }
+		hx-get={ href }
+		hx-target="#dashboard-content"
+		hx-push-url={ href }
+		class="flex items-center gap-3 px-4 py-2.5 mx-1 text-xs text-zinc-600 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface uppercase tracking-widest"
+		@click="paletteOpen = false"
+	>
+		<i data-lucide={ icon } width="15" height="15" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+		<span>{ label }</span>
+	</a>
+}
+
+templ DashNavItem(icon string, label string, href string) {
+	<a
+		href={ templ.SafeURL(href) }
+		data-dash-href={ href }
+		hx-get={ href }
+		hx-target="#dashboard-content"
+		hx-push-url={ href }
+		class="flex items-center py-2.5 text-xs text-zinc-500 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface border-l-2 border-transparent transition-colors uppercase tracking-widest"
+		:class="sidebarOpen ? 'px-4 gap-3' : 'justify-center px-1'"
+		@click="if (window.innerWidth < 1024) sidebarOpen = false"
+	>
+		<i data-lucide={ icon } width="15" height="15" class="shrink-0"></i>
+		<span x-show="sidebarOpen" class="truncate">{ label }</span>
+	</a>
+}
+
+templ DashSidebarAction(icon string, label string, href string) {
+	<form method="POST" action={ templ.SafeURL(href) }>
+		<button
+			type="submit"
+			class="flex items-center w-full py-2.5 text-xs text-zinc-500 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface border-l-2 border-transparent transition-colors uppercase tracking-widest"
+			:class="sidebarOpen ? 'px-4 gap-3' : 'justify-center px-1'"
+		>
+			<i data-lucide={ icon } width="15" height="15" class="shrink-0"></i>
+			<span x-show="sidebarOpen" class="truncate">{ label }</span>
+		</button>
+	</form>
+}

@@ -3,16 +3,14 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ PricingPage(userName string) {
-	@components.Layout("Project Platform | Pricing", userName) {
+	@components.Layout("Pricing | Platform", userName) {
 		@PricingContent(userName)
 	}
 }
 
 templ PricingContent(userName string) {
-	<title>Project Platform | Pricing</title>
+	<title>Pricing | Platform</title>
 	<div class="flex flex-col gap-24 py-12 relative">
-		// Subtle grid background
-		<div class="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none" style="background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;"></div>
 		// ── HERO ──────────────────────────────────────────────────────────────
 		<section class="relative z-10 flex flex-col items-center text-center gap-6">
 			<div class="inline-flex items-center gap-2 px-3 py-1.5 border border-zinc-300 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface text-[10px] font-bold tracking-widest text-zinc-500 dark:text-atom-muted uppercase">

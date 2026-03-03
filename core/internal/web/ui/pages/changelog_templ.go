@@ -49,7 +49,7 @@ func ChangelogPage(userName string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = components.Layout("Project Platform | Changelog", userName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = components.Layout("Changelog | Platform", userName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -78,14 +78,14 @@ func ChangelogContent(userName string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>Project Platform | Changelog</title><div class=\"flex flex-col gap-24 py-12 relative\"><div class=\"absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.06] pointer-events-none\" style=\"background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px); background-size: 40px 40px;\"></div><section class=\"relative z-10 flex flex-col gap-6 max-w-3xl\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<title>Changelog | Platform</title><div class=\"flex flex-col gap-24 py-12 relative\"><section class=\"relative z-10 flex flex-col gap-6 max-w-3xl\"><span class=\"text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("// changelog")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 18, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 16, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func changelogEntry(date string, version string, items []changelogItem) templ.Co
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 52, Col: 102}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 50, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func changelogEntry(date string, version string, items []changelogItem) templ.Co
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(date)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 53, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 51, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -238,7 +238,7 @@ func changelogItemRow(kind string, text string) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 77, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ui/pages/changelog.templ`, Line: 75, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

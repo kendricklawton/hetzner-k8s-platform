@@ -40,7 +40,7 @@ templ Layout(title string, userName string) {
 		</head>
 		<body class="bg-zinc-50 dark:bg-atom-bg text-zinc-900 dark:text-atom-fg font-mono flex flex-col min-h-screen transition-colors duration-500 selection:bg-atom-blue/30 overflow-x-hidden">
 			<header
-				class="fixed top-0 left-0 w-full z-40 bg-white dark:bg-atom-bg border-b border-zinc-200 dark:border-atom-border"
+				class="fixed top-0 left-0 w-full z-40 bg-zinc-50 dark:bg-atom-bg border-b border-zinc-200 dark:border-atom-border"
 				x-data="{ mobileOpen: false, productOpen: false, resourcesOpen: false, mobileProductOpen: false, mobileResourcesOpen: false }"
 				@keydown.escape.window="mobileOpen = false; productOpen = false; resourcesOpen = false"
 			>
@@ -139,6 +139,17 @@ templ Layout(title string, userName string) {
 								>
 									<span class="block text-sm text-zinc-900 dark:text-atom-fg">Changelog</span>
 									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
+								</a>
+								<a
+									href="/templates"
+									hx-get="/templates"
+									hx-target="#main-content"
+									hx-push-url="/templates"
+									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-100 dark:border-atom-border"
+									@click="resourcesOpen = false"
+								>
+									<span class="block text-sm text-zinc-900 dark:text-atom-fg">Templates</span>
+									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
 								</a>
 								<a
 									href="/about"
@@ -258,6 +269,17 @@ templ Layout(title string, userName string) {
 						>
 							<span class="block text-sm text-zinc-900 dark:text-atom-fg">Changelog</span>
 							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
+						</a>
+						<a
+							href="/templates"
+							hx-get="/templates"
+							hx-target="#main-content"
+							hx-push-url="/templates"
+							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
+							@click="mobileOpen = false; mobileResourcesOpen = false"
+						>
+							<span class="block text-sm text-zinc-900 dark:text-atom-fg">Templates</span>
+							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
 						</a>
 						<a
 							href="/about"

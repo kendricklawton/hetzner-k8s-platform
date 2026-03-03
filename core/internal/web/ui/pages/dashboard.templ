@@ -1,49 +1,308 @@
 package pages
 
-import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
+import (
+	"fmt"
 
-// 1. The FULL Page (Used on initial browser load)
-templ DashboardPage(userName string) {
-	@components.Layout("Project Platform | Dashboard", userName) {
-		@DashboardContent()
+	"github.com/kendricklawton/project-platform/core/internal/web/ui/components"
+)
+
+var (
+	mockNames          = []string{"api-gateway", "auth-service", "worker-pool", "metrics-agent", "edge-proxy", "cdn-origin", "webhook-relay", "task-scheduler", "log-aggregator", "config-server"}
+	mockDeployStatuses = []string{"success", "success", "success", "success", "success", "success", "building", "building", "failed", "success"}
+	mockTimes          = []string{"2m ago", "8m ago", "15m ago", "32m ago", "1h ago", "2h ago", "4h ago", "8h ago", "12h ago", "1d ago"}
+	mockSvcStatuses    = []string{"running", "running", "running", "running", "running", "running", "running", "stopped", "deploying", "running"}
+	mockSvcTypes       = []string{"Go", "Rust", "Go", "Zig", "Rust", "Go", "Go", "Rust", "Go", "Zig"}
+	mockMemory         = []string{"24 MB", "12 MB", "48 MB", "8 MB", "32 MB", "16 MB", "64 MB", "0 MB", "28 MB", "18 MB"}
+)
+
+// ── OVERVIEW ─────────────────────────────────────────────────────────────────
+
+templ DashboardPage(userName string, slug string) {
+	@components.DashboardLayout("Overview | Platform", userName, slug) {
+		@DashboardContent(userName, slug)
 	}
 }
 
-// 2. The PARTIAL Fragment (Used by HTMX to hot-swap the UI)
-templ DashboardContent() {
-	<div class="animate-fade-in">
-		// Quick Actions
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-			<button class="flex flex-col items-start p-4 border border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface hover:bg-zinc-100 dark:hover:bg-atom-bg transition-colors group">
-				<span class="text-sm text-zinc-900 dark:text-atom-fg uppercase tracking-widest mb-2 group-hover:text-green-600 dark:group-hover:text-atom-green transition-colors">[+] Web service</span>
-				<span class="text-xs text-zinc-500 dark:text-atom-muted text-left">Deploy a new Go web service</span>
-			</button>
-			<button class="flex flex-col items-start p-4 border border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface hover:bg-zinc-100 dark:hover:bg-atom-bg transition-colors group">
-				<span class="text-sm text-zinc-900 dark:text-atom-fg uppercase tracking-widest mb-2 group-hover:text-green-600 dark:group-hover:text-atom-green transition-colors">[*] Create a batch job</span>
-				<span class="text-xs text-zinc-500 dark:text-atom-muted text-left">Run Go scripts and cron jobs.</span>
-			</button>
-			<button class="flex flex-col items-start p-4 border border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface hover:bg-zinc-100 dark:hover:bg-atom-bg transition-colors group">
-				<span class="text-sm text-zinc-900 dark:text-atom-fg uppercase tracking-widest mb-2 group-hover:text-green-600 dark:group-hover:text-atom-green transition-colors">[*] Write a function</span>
-				<span class="text-xs text-zinc-500 dark:text-atom-muted text-left">Write and deploy functions using Go.</span>
-			</button>
-		</div>
-		// Active Services Table
-		<div class="border border-zinc-200 dark:border-atom-border bg-zinc-50 dark:bg-atom-surface">
-			<div class="p-4 border-b border-zinc-200 dark:border-atom-border flex justify-between items-center">
-				<h3 class="text-sm text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Active Deployments</h3>
+templ DashboardContent(userName string, slug string) {
+	<div class="p-6 lg:p-8">
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+			// ── LEFT COLUMN ──────────────────────────────────────────────────
+			<div class="flex flex-col gap-6 lg:gap-8">
+				// Usage
+				<div class="flex flex-col gap-3">
+					<h2 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Usage</h2>
+					<div class="border border-zinc-200 dark:border-atom-border">
+						<div class="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-atom-border">
+							<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg">Last 30 days</span>
+							<a
+								href={ templ.SafeURL("/pricing") }
+								class="px-3 py-1 bg-zinc-900 dark:bg-white text-[10px] font-bold text-white dark:text-zinc-900 uppercase tracking-widest hover:opacity-80 transition-opacity"
+							>Upgrade</a>
+						</div>
+						@dashUsageRow("Egress", "0 B", "10 GB")
+						@dashUsageRow("Build Minutes", "0", "200 min")
+						@dashUsageRow("Services", "0", "3")
+						@dashUsageRow("Domains", "0", "1")
+					</div>
+				</div>
+				// Recent Deployments
+				<div class="flex flex-col gap-3">
+					<h2 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Recent Deployments</h2>
+					<div class="border border-zinc-200 dark:border-atom-border overflow-hidden">
+						<div class="max-h-96 overflow-y-auto scroll-container">
+							for i := 0; i < 50; i++ {
+								@dashDeploymentRow(
+									mockNames[i%len(mockNames)],
+									mockDeployStatuses[i%len(mockDeployStatuses)],
+									fmt.Sprintf("%07x", 0xa1b2c30+i*0x11111),
+									mockTimes[i%len(mockTimes)],
+								)
+							}
+						</div>
+					</div>
+				</div>
 			</div>
-			<div class="p-0">
-				// Mock Data
-				<div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-zinc-100 dark:border-atom-border/50 hover:bg-zinc-100 dark:hover:bg-atom-bg transition-colors">
-					<div class="flex items-center gap-4 mb-2 sm:mb-0">
-						<div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-						<div>
-							<p class="text-sm text-zinc-900 dark:text-atom-fg font-bold">go-auth-api</p>
-							<p class="text-xs text-zinc-500 dark:text-atom-muted mt-1">runtime: go1.22 · rev: 4</p>
+			// ── RIGHT COLUMN ─────────────────────────────────────────────────
+			<div class="flex flex-col gap-6 lg:gap-8">
+				// Active Services
+				<div class="flex flex-col gap-3">
+					<h2 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Active Services</h2>
+					<div class="border border-zinc-200 dark:border-atom-border overflow-hidden">
+						<div class="max-h-96 overflow-y-auto scroll-container">
+							for i := 0; i < 50; i++ {
+								@dashServiceRow(
+									mockNames[i%len(mockNames)],
+									mockSvcStatuses[i%len(mockSvcStatuses)],
+									mockSvcTypes[i%len(mockSvcTypes)],
+									mockMemory[i%len(mockMemory)],
+								)
+							}
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
+	</div>
+}
+
+// ── SERVICES ─────────────────────────────────────────────────────────────────
+
+templ DashboardServicesPage(userName string, slug string) {
+	@components.DashboardLayout("Services | Platform", userName, slug) {
+		@DashboardServicesContent()
+	}
+}
+
+templ DashboardServicesContent() {
+	<div class="flex flex-col h-full">
+		<div class="px-6 lg:px-8 pt-6 lg:pt-8 pb-4 shrink-0">
+			<h1 class="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">Services</h1>
+		</div>
+		<div class="px-6 lg:px-8 pb-6 lg:pb-8 flex flex-col min-h-0 flex-1">
+			<div class="border border-zinc-200 dark:border-atom-border flex flex-col min-h-0 flex-1">
+				<div class="flex items-center px-5 py-2 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface shrink-0">
+					<span class="w-2 shrink-0"></span>
+					<span class="ml-3 text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest flex-1">Service</span>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-12">Type</span>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-16 text-right">Memory</span>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-20 text-right">State</span>
+				</div>
+				<div class="overflow-y-auto flex-1 min-h-0 scroll-container">
+					for i := 0; i < 50; i++ {
+						@dashServiceRow(
+							mockNames[i%len(mockNames)],
+							mockSvcStatuses[i%len(mockSvcStatuses)],
+							mockSvcTypes[i%len(mockSvcTypes)],
+							mockMemory[i%len(mockMemory)],
+						)
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// ── DEPLOYMENTS ──────────────────────────────────────────────────────────────
+
+templ DashboardDeploymentsPage(userName string, slug string) {
+	@components.DashboardLayout("Deployments | Platform", userName, slug) {
+		@DashboardDeploymentsContent()
+	}
+}
+
+templ DashboardDeploymentsContent() {
+	<div class="flex flex-col h-full">
+		// Title bar
+		<div class="px-6 lg:px-8 pt-6 lg:pt-8 pb-4 flex items-center shrink-0">
+			<h1 class="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight flex-1">Deployments</h1>
+			<button class="flex items-center justify-center w-8 h-8 text-zinc-400 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors">
+				<i data-lucide="more-horizontal" width="16" height="16"></i>
+			</button>
+		</div>
+		// Filters
+		<div class="px-6 lg:px-8 pb-4 flex flex-wrap items-center gap-3 shrink-0">
+			// Date range
+			<button class="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors text-[11px] font-mono text-zinc-600 dark:text-atom-fg">
+				<i data-lucide="calendar" width="12" height="12" class="text-zinc-400 dark:text-atom-muted"></i>
+				Select Date Range
+			</button>
+			<div class="flex-1"></div>
+			// Search authors
+			<div class="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg w-44">
+				<i data-lucide="search" width="12" height="12" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+				<input
+					type="text"
+					placeholder="All Authors..."
+					class="flex-1 bg-transparent text-[11px] font-mono text-zinc-900 dark:text-atom-fg placeholder-zinc-400 dark:placeholder-atom-muted outline-none min-w-0"
+				/>
+				<i data-lucide="chevron-down" width="10" height="10" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+			</div>
+			// Environment filter
+			<button class="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors text-[11px] font-mono text-zinc-600 dark:text-atom-fg">
+				All Environments
+				<i data-lucide="chevron-down" width="10" height="10" class="text-zinc-400 dark:text-atom-muted"></i>
+			</button>
+			// Status filter
+			<button class="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors text-[11px] font-mono text-zinc-600 dark:text-atom-fg">
+				<span class="flex items-center gap-0.5">
+					<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+					<span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+					<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+				</span>
+				Status
+				<span class="text-zinc-400 dark:text-atom-muted">5/6</span>
+				<i data-lucide="chevron-down" width="10" height="10" class="text-zinc-400 dark:text-atom-muted"></i>
+			</button>
+		</div>
+		// Table
+		<div class="px-6 lg:px-8 pb-6 lg:pb-8 flex flex-col min-h-0 flex-1">
+			<div class="border border-zinc-200 dark:border-atom-border flex flex-col min-h-0 flex-1">
+				<div class="flex items-center px-5 py-2 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface shrink-0">
+					<span class="w-2 shrink-0"></span>
+					<span class="ml-3 text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest flex-1">Service</span>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-16">Commit</span>
+					<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-16 text-right">Time</span>
+				</div>
+				<div class="overflow-y-auto flex-1 min-h-0 scroll-container">
+					for i := 0; i < 50; i++ {
+						@dashDeploymentRow(
+							mockNames[i%len(mockNames)],
+							mockDeployStatuses[i%len(mockDeployStatuses)],
+							fmt.Sprintf("%07x", 0xa1b2c30+i*0x11111),
+							mockTimes[i%len(mockTimes)],
+						)
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// ── LOGS ─────────────────────────────────────────────────────────────────────
+
+templ DashboardLogsPage(userName string, slug string) {
+	@components.DashboardLayout("Logs | Platform", userName, slug) {
+		@DashboardLogsContent()
+	}
+}
+
+templ DashboardLogsContent() {
+	@dashPlaceholderPage("scroll-text", "Logs", "Runtime and build logs will stream here.")
+}
+
+// ── SECRETS ──────────────────────────────────────────────────────────────────
+
+templ DashboardSecretsPage(userName string, slug string) {
+	@components.DashboardLayout("Secrets | Platform", userName, slug) {
+		@DashboardSecretsContent()
+	}
+}
+
+templ DashboardSecretsContent() {
+	@dashPlaceholderPage("key", "Secrets", "Encrypted environment variables and secrets will appear here.")
+}
+
+// ── DOMAINS ──────────────────────────────────────────────────────────────────
+
+templ DashboardDomainsPage(userName string, slug string) {
+	@components.DashboardLayout("Domains | Platform", userName, slug) {
+		@DashboardDomainsContent()
+	}
+}
+
+templ DashboardDomainsContent() {
+	@dashPlaceholderPage("globe", "Domains", "Custom domains and TLS certificates will appear here.")
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+
+templ DashboardSettingsPage(userName string, slug string) {
+	@components.DashboardLayout("Settings | Platform", userName, slug) {
+		@DashboardSettingsContent()
+	}
+}
+
+templ DashboardSettingsContent() {
+	@dashPlaceholderPage("settings", "Settings", "Account and workspace settings will appear here.")
+}
+
+// ── SHARED COMPONENTS ────────────────────────────────────────────────────────
+
+templ dashPlaceholderPage(icon string, title string, desc string) {
+	<div class="p-6 lg:p-8 flex flex-col gap-6">
+		<h1 class="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">{ title }</h1>
+		<div class="border border-zinc-200 dark:border-atom-border">
+			<div class="flex flex-col items-center justify-center py-24 gap-4">
+				<i data-lucide={ icon } width="20" height="20" class="text-zinc-300 dark:text-atom-border"></i>
+				<p class="text-xs text-zinc-500 dark:text-atom-muted font-mono">{ desc }</p>
+			</div>
+		</div>
+	</div>
+}
+
+templ dashUsageRow(label string, value string, limit string) {
+	<div class="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-atom-border last:border-b-0">
+		<div class="flex items-center gap-3">
+			<span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-atom-border shrink-0"></span>
+			<span class="text-xs text-zinc-900 dark:text-atom-fg">{ label }</span>
+		</div>
+		<span class="text-xs font-mono text-zinc-500 dark:text-atom-muted">{ value + " / " + limit }</span>
+	</div>
+}
+
+templ dashDeploymentRow(name string, status string, hash string, timeAgo string) {
+	<div class="flex items-center px-5 py-3 border-b border-zinc-200 dark:border-atom-border last:border-b-0 hover:bg-zinc-50 dark:hover:bg-atom-surface">
+		if status == "success" {
+			<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+		} else if status == "building" {
+			<span class="w-2 h-2 rounded-full bg-yellow-500 shrink-0"></span>
+		} else {
+			<span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+		}
+		<span class="ml-3 text-xs font-bold text-zinc-900 dark:text-atom-fg truncate">{ name }</span>
+		<span class="ml-auto text-[10px] font-mono text-zinc-500 dark:text-atom-muted shrink-0 w-16">{ hash }</span>
+		<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted shrink-0 w-16 text-right">{ timeAgo }</span>
+	</div>
+}
+
+templ dashServiceRow(name string, status string, svcType string, memory string) {
+	<div class="flex items-center px-5 py-3 border-b border-zinc-200 dark:border-atom-border last:border-b-0 hover:bg-zinc-50 dark:hover:bg-atom-surface">
+		if status == "running" {
+			<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+		} else if status == "deploying" {
+			<span class="w-2 h-2 rounded-full bg-yellow-500 shrink-0"></span>
+		} else {
+			<span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-atom-border shrink-0"></span>
+		}
+		<span class="ml-3 text-xs font-bold text-zinc-900 dark:text-atom-fg truncate flex-1">{ name }</span>
+		<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted shrink-0 w-12">{ svcType }</span>
+		<span class="text-[10px] font-mono text-zinc-500 dark:text-atom-muted shrink-0 w-16 text-right">{ memory }</span>
+		if status == "running" {
+			<span class="text-[10px] font-mono text-green-600 dark:text-atom-green uppercase tracking-widest shrink-0 w-20 text-right">Running</span>
+		} else if status == "deploying" {
+			<span class="text-[10px] font-mono text-yellow-600 dark:text-atom-yellow uppercase tracking-widest shrink-0 w-20 text-right">Deploying</span>
+		} else {
+			<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted uppercase tracking-widest shrink-0 w-20 text-right">Stopped</span>
+		}
 	</div>
 }

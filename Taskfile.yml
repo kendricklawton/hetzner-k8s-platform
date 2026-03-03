@@ -329,6 +329,7 @@ tasks:
   dev:server:
     desc: "Run the Core Server locally with live-reload (Air)"
     dir: core
+    ignore_error: true
     cmds:
       - go run github.com/air-verse/air@latest -c .air.server.toml
 

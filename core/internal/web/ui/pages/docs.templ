@@ -3,7 +3,7 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ DocsPage(slug, title, content string, userName string) {
-	@components.Layout("Project Platform | Docs | "+title, userName) {
+	@components.Layout(title+" | Platform", userName) {
 		@DocsContent(slug, title, content)
 	}
 }

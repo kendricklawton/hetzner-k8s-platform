@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 	"github.com/kendricklawton/project-platform/core/internal/web/ui/pages"
 	"github.com/kendricklawton/project-platform/gen/go/platform/v1/platformv1connect"
@@ -50,6 +51,47 @@ func (h *Handler) isMainContentSwap(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "main-content"
 }
 
+// isDashboardSwap reports whether the request is an HTMX partial swap targeting #dashboard-content.
+func (h *Handler) isDashboardSwap(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "dashboard-content"
+}
+
+// dashboardAuth validates auth and returns userName; redirects and returns "" on failure.
+func (h *Handler) dashboardAuth(w http.ResponseWriter, r *http.Request) string {
+	_, ok := GetTokenFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return ""
+	}
+	return GetDisplayName(r)
+}
+
+// dashboardSlug validates auth and the URL slug against the user's slug cookie.
+// Returns ("", "") and handles the redirect itself on any failure.
+func (h *Handler) dashboardSlug(w http.ResponseWriter, r *http.Request) (userName, slug string) {
+	userName = h.dashboardAuth(w, r)
+	if userName == "" {
+		return
+	}
+	slug = chi.URLParam(r, "slug")
+	cookieSlug := GetSlug(r)
+	if slug != cookieSlug {
+		http.Redirect(w, r, "/"+cookieSlug, http.StatusFound)
+		slug = ""
+	}
+	return
+}
+
+// DashboardRedirect resolves /dashboard → /{slug} using the slug cookie.
+func (h *Handler) DashboardRedirect(w http.ResponseWriter, r *http.Request) {
+	slug := GetSlug(r)
+	if slug == "" {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/"+slug, http.StatusFound)
+}
+
 // Splash renders the home page.
 func (h *Handler) Splash(w http.ResponseWriter, r *http.Request) {
 	userName := GetDisplayName(r)
@@ -64,6 +106,25 @@ func (h *Handler) Splash(w http.ResponseWriter, r *http.Request) {
 	}
 
 	component := pages.SplashPage("INITIALIZING PLATFORM...", userName)
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// Templates renders the templates page.
+func (h *Handler) Templates(w http.ResponseWriter, r *http.Request) {
+	userName := GetDisplayName(r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if h.isMainContentSwap(r) {
+		component := pages.TemplatesContent(userName)
+		if err := component.Render(r.Context(), w); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	component := pages.TemplatesPage(userName)
 	if err := component.Render(r.Context(), w); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
@@ -136,7 +197,11 @@ func (h *Handler) Healthz(w http.ResponseWriter, r *http.Request) {
 	actionURL := "/auth/login"
 	buttonText := "INITIALIZE LOGIN SEQUENCE"
 	if isLoggedIn {
-		actionURL = "/dashboard"
+		slug := GetSlug(r)
+		if slug == "" {
+			slug = "dashboard"
+		}
+		actionURL = "/" + slug
 		buttonText = "ENTER SECURE CONSOLE"
 	}
 
@@ -179,39 +244,111 @@ func (h *Handler) Docs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Dashboard renders the protected dashboard. Requires RequireAuth middleware.
+// Dashboard renders the projects overview. Requires RequireAuth middleware.
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
-	_, ok := GetTokenFromContext(r.Context())
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusFound)
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
 		return
 	}
-
-	userName := GetDisplayName(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
+	// Coming from the public-site HTMX nav — force a full page load into the app shell.
 	if h.isMainContentSwap(r) {
-		component := pages.DashboardContent()
-		if err := component.Render(r.Context(), w); err != nil {
-			http.Error(w, "render error", http.StatusInternalServerError)
-		}
+		w.Header().Set("HX-Redirect", "/"+slug)
 		return
 	}
-
-	component := pages.DashboardPage(userName)
-	if err := component.Render(r.Context(), w); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
+	if h.isDashboardSwap(r) {
+		pages.DashboardContent(userName, slug).Render(r.Context(), w)
+		return
 	}
+	pages.DashboardPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardServices renders the services page.
+func (h *Handler) DashboardServices(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardServicesContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardServicesPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardDeployments renders the deployments page.
+func (h *Handler) DashboardDeployments(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardDeploymentsContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardDeploymentsPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardLogs renders the logs page.
+func (h *Handler) DashboardLogs(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardLogsContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardLogsPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardSecrets renders the secrets page.
+func (h *Handler) DashboardSecrets(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardSecretsContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardSecretsPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardDomains renders the domains page.
+func (h *Handler) DashboardDomains(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardDomainsContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardDomainsPage(userName, slug).Render(r.Context(), w)
+}
+
+// DashboardSettings renders the dashboard settings page.
+func (h *Handler) DashboardSettings(w http.ResponseWriter, r *http.Request) {
+	userName, slug := h.dashboardSlug(w, r)
+	if slug == "" {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if h.isDashboardSwap(r) {
+		pages.DashboardSettingsContent().Render(r.Context(), w)
+		return
+	}
+	pages.DashboardSettingsPage(userName, slug).Render(r.Context(), w)
 }
 
 // Settings renders the protected settings page. Requires RequireAuth middleware.
 func (h *Handler) Settings(w http.ResponseWriter, r *http.Request) {
-	_, ok := GetTokenFromContext(r.Context())
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusFound)
-		return
-	}
-
 	userName := GetDisplayName(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
