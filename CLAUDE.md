@@ -14,9 +14,9 @@ Read these first. Violation of these rules is a failure of the prompt.
 - **[FORBIDDEN]** Do NOT add "forever free" guarantees or perpetual tier promises on user-facing pages. The free tier is generous but not a lifetime commitment.
 - 
 ## 01_ ARCHITECTURE & INFRASTRUCTURE
-- **Providers:** Hetzner (primary) and DigitalOcean (secondary/fallback). Long-term goal is owned bare metal. Do not expose provider names on user-facing pages.
-- **Hardware:** Hetzner CPX31 instances (4 vCPU, 8 GB RAM) provisioned via Terraform.
-- **Orchestration:** K3s — lightweight Kubernetes for production. No managed control plane.
+- **Provider:** Hivelocity bare metal (Dallas hub) — 10 Gbps uplink, 20 TB unmetered egress/month. Do not expose provider names on user-facing pages.
+- **Edge Router:** Hivelocity Floating IP mapped to the bare-metal edge node. All public traffic flows through Hivelocity's unmetered bandwidth pool — no per-GB egress billing. Floating IP can be reassigned via API for failover.
+- **Orchestration:** K3s — lightweight Kubernetes on bare metal. No managed control plane.
 - **Network Data Plane:** Cilium (eBPF) — replaces kube-proxy entirely. Hubble observability + WireGuard mesh.
 - **Network Control Plane:** Tailscale overlay for operator access.
 - **Deployment Strategy:** Immutable GitOps via ArgoCD. ArgoCD sync-wave annotations enforce dependency order.
@@ -27,8 +27,8 @@ Read these first. Violation of these rules is a failure of the prompt.
 - **KMS:** Key management via KMS for encryption at rest. Details internal only — do not surface in public-facing content.
 - **Secrets:** Sealed Secrets — encrypted at rest, committed to Git, decrypted only inside the cluster.
 - **Observability:** VictoriaMetrics + Grafana (metrics) + Loki + Fluent Bit (logs).
-- **Ingress:** ingress-nginx with cert-manager (Let's Encrypt TLS). All public traffic TLS-terminated at ingress.
-- **Infrastructure overhead:** The platform stack consumes ~3–4 GB of the 8 GB node RAM. User workload limits are sized around this reality.
+- **Ingress:** ingress-nginx + cert-manager (Let's Encrypt TLS). All public traffic TLS-terminated at the Floating IP edge node.
+- **Infrastructure overhead:** The platform stack consumes ~3–4 GB of the node RAM. User workload limits are sized around this reality.
 
 ## 02_ RESOURCE LIMITS (CURRENT TIERS)
 Static Go/Rust binaries idle at 10–50 MB RSS. Limits are **account-wide totals**, not per-service.

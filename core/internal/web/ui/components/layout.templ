@@ -42,9 +42,9 @@ templ Layout(title string, userName string) {
 			<header
 				class="fixed top-0 left-0 w-full z-40 bg-zinc-50 dark:bg-atom-bg"
 				:class="scrolled ? 'border-b border-zinc-200 dark:border-atom-border' : ''"
-				x-data="{ mobileOpen: false, resourcesOpen: false, mobileResourcesOpen: false, currentPath: window.location.pathname, scrolled: false }"
+				x-data="{ mobileOpen: false, productsOpen: false, mobileProductsOpen: false, resourcesOpen: false, mobileResourcesOpen: false, currentPath: window.location.pathname, scrolled: false }"
 				@scroll.window="scrolled = window.scrollY > 0"
-				@keydown.escape.window="mobileOpen = false; resourcesOpen = false"
+				@keydown.escape.window="mobileOpen = false; productsOpen = false; resourcesOpen = false"
 				@htmx:after-settle.window="currentPath = window.location.pathname"
 			>
 				// Nav bar row
@@ -71,6 +71,47 @@ templ Layout(title string, userName string) {
 					</a>
 					// Desktop center nav (visible lg+)
 					<nav class="hidden lg:flex items-center flex-1 gap-0 h-full">
+						// Products dropdown
+						<div
+							class="relative h-full flex items-center"
+							@mouseenter="productsOpen = true"
+							@mouseleave="productsOpen = false"
+						>
+							<button
+								class="nav-item flex items-center gap-1.5 px-4 h-full text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white cursor-pointer"
+								@click="productsOpen = !productsOpen"
+							>
+								<span>Products</span>
+							</button>
+							<div
+								x-show="productsOpen"
+								style="display:none"
+								class="absolute top-full left-0 w-64 bg-white dark:bg-atom-surface border border-zinc-200 dark:border-atom-border shadow-lg"
+							>
+								<a
+									href="/cloud"
+									hx-get="/cloud"
+									hx-target="#main-content"
+									hx-push-url="/cloud"
+									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-100 dark:border-atom-border"
+									@click="productsOpen = false"
+								>
+									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Cloud</span>
+									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Serverless containers. Scale to zero.</span>
+								</a>
+								<a
+									href="/metal"
+									hx-get="/metal"
+									hx-target="#main-content"
+									hx-push-url="/metal"
+									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors"
+									@click="productsOpen = false"
+								>
+									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Metal</span>
+									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Firecracker microVMs. Near-native performance.</span>
+								</a>
+							</div>
+						</div>
 						// Resources dropdown
 						<div
 							class="relative h-full flex items-center"
@@ -82,8 +123,6 @@ templ Layout(title string, userName string) {
 								@click="resourcesOpen = !resourcesOpen"
 							>
 								<span>Resources</span>
-								// <span x-show="!resourcesOpen"><i data-lucide="chevron-down" width="13" height="13"></i></span>
-								// <span x-show="resourcesOpen" style="display:none"><i data-lucide="chevron-up" width="13" height="13"></i></span>
 							</button>
 							<div
 								x-show="resourcesOpen"
@@ -170,6 +209,39 @@ templ Layout(title string, userName string) {
 					style="display:none"
 					class="lg:hidden absolute top-12 left-0 w-full bg-white dark:bg-atom-bg border-b border-zinc-200 dark:border-atom-border overflow-y-auto"
 				>
+					// Products (expandable)
+					<button
+						class="w-full flex items-center justify-between px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
+						@click="mobileProductsOpen = !mobileProductsOpen"
+					>
+						<span>Products</span>
+						<span x-show="!mobileProductsOpen"><i data-lucide="chevron-down" width="14" height="14"></i></span>
+						<span x-show="mobileProductsOpen" style="display:none"><i data-lucide="chevron-up" width="14" height="14"></i></span>
+					</button>
+					<div x-show="mobileProductsOpen" style="display:none" class="bg-zinc-50 dark:bg-atom-surface">
+						<a
+							href="/cloud"
+							hx-get="/cloud"
+							hx-target="#main-content"
+							hx-push-url="/cloud"
+							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
+							@click="mobileOpen = false; mobileProductsOpen = false"
+						>
+							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Cloud</span>
+							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Serverless containers. Scale to zero.</span>
+						</a>
+						<a
+							href="/metal"
+							hx-get="/metal"
+							hx-target="#main-content"
+							hx-push-url="/metal"
+							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
+							@click="mobileOpen = false; mobileProductsOpen = false"
+						>
+							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Metal</span>
+							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Firecracker microVMs. Near-native performance.</span>
+						</a>
+					</div>
 					// Resources (expandable)
 					<button
 						class="w-full flex items-center justify-between px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"

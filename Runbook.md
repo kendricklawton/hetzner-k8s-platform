@@ -35,8 +35,7 @@ tailscale version
 > ArgoCD runs on the cluster — no local CLI install needed. Interact via port-forward or the UI (see section C).
 
 Verify `.env` is populated:
-- `HCLOUD_TOKEN`
-- `DO_TOKEN`
+- `HIVELOCITY_API_KEY`
 - `WORKOS_CLIENT_ID`, `WORKOS_CLIENT_SECRET`
 - `DATABASE_URL`
 - GCS credentials path for Terraform backend
@@ -57,11 +56,10 @@ tailscale ping <node-tailscale-hostname>   # verify reachability
 
 ### 2. Fetch the kubeconfig
 
-`task hz:kubeconfig` (or `task do:kubeconfig`) pulls the kubeconfig from the cluster and merges it into `~/.kube/config`. Terraform patches the `server:` address to the Tailscale IP of the control plane node automatically.
+`task hv:kubeconfig` pulls the kubeconfig from the cluster and merges it into `~/.kube/config`. Terraform patches the `server:` address to the Tailscale IP of the control plane node automatically.
 
 ```bash
-task hz:kubeconfig     # fetch + merge for Hetzner cluster
-task do:kubeconfig     # fetch + merge for DigitalOcean cluster
+task hv:kubeconfig     # fetch + merge for Hivelocity cluster
 ```
 
 ### 3. Verify kubectl is pointing at the right cluster
@@ -82,22 +80,12 @@ The most common causes:
    kubectl config view --minify | grep server
    # Should be: https://<tailscale-ip>:6443
    ```
-   If it shows the wrong address, re-run `task hz:kubeconfig` or patch it manually:
+   If it shows the wrong address, re-run `task hv:kubeconfig` or patch it manually:
    ```bash
    kubectl config set-cluster <cluster-name> --server=https://<tailscale-ip>:6443
    ```
 3. **Wrong context active** — run `kubectl config use-context <correct-context>`.
-4. **Node is down** — check Hetzner console or Terraform state.
-
-### Switching between clusters (Hetzner ↔ DigitalOcean)
-
-```bash
-kubectl config get-contexts
-kubectl config use-context <context-name>
-kubectl config current-context
-```
-
-Install `kubectx` for faster switching: `kubectx <context-name>`.
+4. **Node is down** — check Hivelocity console or Terraform state.
 
 ---
 
@@ -106,41 +94,38 @@ Install `kubectx` for faster switching: `kubectx <context-name>`.
 Packer images bake in K3s, gVisor (`runsc`), and Tailscale. Images are used as the base for all Terraform-provisioned nodes.
 
 ```bash
-task packer:hz:k3s     # Hetzner — K3s node image
-task packer:hz:nat     # Hetzner — NAT gateway image
-task packer:do:k3s     # DigitalOcean — K3s node image (fallback)
-task packer:do:nat     # DigitalOcean — NAT gateway image (fallback)
+task packer:hv:k3s     # Hivelocity — K3s node image
+task packer:hv:nat     # Hivelocity — NAT gateway image
 ```
 
-After a build, update the Terraform variable that references the snapshot/image ID before provisioning new nodes.
+After a build, update the Terraform variable that references the image ID before provisioning new nodes.
 
 ---
 
 ## B. Infrastructure Provisioning (Terraform)
 
-Terraform state is stored remotely in GCS. Each provider has its own state file.
+Terraform state is stored remotely in GCS. Provider: Hivelocity (Dallas hub).
 
-### Hetzner (primary)
-
-```bash
-task hz:plan        # preview changes
-task hz:apply       # provision / update infrastructure
-task hz:output      # show Terraform outputs (IPs, etc.)
-task hz:kubeconfig  # fetch and merge kubeconfig for the cluster
-task hz:destroy     # DESTRUCTIVE — tears down all Hetzner resources
-```
-
-### DigitalOcean (secondary/fallback)
+### Hivelocity
 
 ```bash
-task do:plan
-task do:apply
-task do:output
-task do:kubeconfig
-task do:destroy     # DESTRUCTIVE
+task hv:plan           # preview changes
+task hv:apply          # provision / update infrastructure
+task hv:output         # show Terraform outputs (IPs, Floating IP, etc.)
+task hv:kubeconfig     # fetch and merge kubeconfig for the cluster
+task hv:destroy        # DESTRUCTIVE — tears down all Hivelocity resources
 ```
 
-After `hz:apply` or `do:apply`, Terraform bootstraps the cluster by applying manifests from `infrastructure/terraform/modules/k3s_node/bootstrap/`. This installs ArgoCD and registers the root App of Apps. All subsequent platform component management is handled by ArgoCD.
+After `hv:apply`, Terraform bootstraps the cluster by applying manifests from `infrastructure/terraform/modules/k3s_node/bootstrap/`. This installs ArgoCD and registers the root App of Apps. All subsequent platform component management is handled by ArgoCD.
+
+### Floating IP (Edge Router)
+
+The Floating IP is provisioned alongside the cluster and mapped to the primary bare-metal node. It uses Hivelocity's 20 TB unmetered bandwidth pool — no per-GB egress billing.
+
+```bash
+# Reassign Floating IP to a different node (failover)
+task hv:floating-ip-reassign NODE=<target-node-id>
+```
 
 ---
 
@@ -182,7 +167,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-If you have the `argocd` CLI installed locally (optional), point it at the port-forwarded server:
+If you have the `argocd` CLI installed locally (optional):
 
 ```bash
 argocd login localhost:8080 --insecure --username admin --password <password>
@@ -208,254 +193,71 @@ kubeseal --fetch-cert \
 kubectl create secret generic <name> \
   --from-literal=key=value \
   --dry-run=client -o yaml | \
-  kubeseal --cert pub-cert.pem --format yaml > sealed-secret.yaml
+  kubeseal --cert pub-cert.pem -o yaml > sealed-<name>.yaml
 
-# Apply the sealed secret
-kubectl apply -f sealed-secret.yaml -n <ns>
+# Or use the Taskfile shortcut (SSHs into cluster, runs kubeseal remotely)
+task cluster:seal TENANT=<ns> NAME=<secret> KEY=<k> VAL=<v>
+```
 
-# Verify the secret was decrypted
-kubectl get secret <name> -n <ns>
+Sealed secrets are safe to commit — they can only be decrypted by the sealed-secrets controller inside the cluster.
+
+---
+
+## E. Platform Deployments
+
+All platform services are deployed via ArgoCD. Typical deployment flow:
+
+```
+1. Build + push image (CI/CD or manual)
+2. Update image tag in infrastructure/argocd/<service>/deployment.yaml
+3. Commit and push to main
+4. ArgoCD detects diff and syncs within ~3 minutes
+5. Verify: kubectl rollout status deployment/<name> -n <ns>
+```
+
+For emergency rollback:
+
+```bash
+argocd app rollback <app-name> <revision>
+# or
+kubectl rollout undo deployment/<name> -n <ns>
 ```
 
 ---
 
-## E. Platform Health Check
-
-Run these after any provisioning, deployment, or incident.
-
-### Nodes
+## F. Observability
 
 ```bash
-kubectl get nodes -o wide
-kubectl top nodes
-```
+# VictoriaMetrics
+kubectl port-forward svc/victoria-metrics -n monitoring 8428:8428
+# Open http://localhost:8428
 
-### Core Platform Components
+# Grafana
+kubectl port-forward svc/grafana -n monitoring 3000:3000
+# Open http://localhost:3000 (admin / check sealed secret for password)
 
-```bash
-# ArgoCD — all apps in sync and healthy (kubectl, no local CLI needed)
-kubectl get applications -n argocd
+# Loki (query via Grafana — no direct UI)
+kubectl logs -n monitoring -l app=loki --tail=50
 
-# CNPG — database cluster healthy
-kubectl get cluster -A
-kubectl cnpg status <cluster-name> -n <ns>
-
-# Cilium — network data plane healthy
-cilium status
-
-# ingress-nginx
-kubectl get pods -n ingress-nginx
-
-# cert-manager — no failing certificate requests
-kubectl get certificates -A
-kubectl get challenges -A
-
-# Sealed Secrets controller
-kubectl get pods -n kube-system -l name=sealed-secrets-controller
-
-# KubeArmor
-kubectl get pods -n kubearmor
-
-# Kyverno
-kubectl get pods -n kyverno
-kubectl get clusterpolicies
-kubectl get policyreports -A
-```
-
-### Observability Stack
-
-```bash
-kubectl get pods -n monitoring    # VictoriaMetrics, Grafana
-kubectl get pods -n logging       # Loki, Fluent Bit
+# Fluent Bit (log shipper)
+kubectl get pods -n monitoring -l app=fluent-bit
+kubectl logs -n monitoring -l app=fluent-bit --tail=50
 ```
 
 ---
 
-## F. Local Database (Development)
+## G. Database Operations (CNPG)
+
+See [POSTGRES.md](./POSTGRES.md) for full PostgreSQL and CNPG command reference.
+
+Quick cluster health check:
 
 ```bash
-task db:setup                           # first time: up + migrate + sqlc generate
-task db:up                              # start Postgres container
-task db:down                            # stop container
-task db:migrate                         # apply pending migrations
-task db:migrate-down                    # roll back one migration
-task db:create-migration NAME=<name>    # scaffold new migration files
-task db:generate                        # run sqlc generate
-task db:login                           # psql shell into local DB
+kubectl get cluster -n database
+kubectl describe cluster platform-db -n database
+kubectl get pods -n database
 ```
 
 ---
 
-## G. Code Generation
-
-```bash
-task proto:gen      # buf generate — ConnectRPC stubs from proto/
-task proto:lint     # buf lint
-task db:generate    # sqlc generate from core/queries/
-templ generate      # Templ → Go (run after editing any .templ file)
-go build ./...      # verify no compilation errors
-```
-
----
-
-## H. Backups
-
-### etcd (K3s)
-
-K3s automatically creates etcd snapshots. Snapshots are stored in S3-compatible storage (configured via k3s flags on the control plane in Terraform).
-
-```bash
-# Verify snapshot config
-kubectl -n kube-system get pods -l component=etcd
-
-# Manual snapshot (if needed)
-k3s etcd-snapshot save --name manual-$(date +%F)
-
-# List snapshots
-k3s etcd-snapshot list
-```
-
-### PostgreSQL (CNPG)
-
-CNPG handles WAL archiving and scheduled base backups. Backup target is GCS (internal).
-
-```bash
-# Trigger a manual backup
-kubectl cnpg backup <cluster-name> -n <ns>
-
-# Check backup status
-kubectl get backups -n <ns>
-kubectl describe backup <backup-name> -n <ns>
-
-# Scheduled backup config
-kubectl get scheduledbackups -n <ns>
-```
-
----
-
-## I. Incident Response
-
-### Pod stuck in CrashLoopBackOff
-
-```bash
-kubectl describe pod <pod> -n <ns>           # check Events section
-kubectl logs <pod> -n <ns> --previous        # logs from crashed container
-kubectl logs <pod> -n <ns> -c <container>    # if multi-container
-```
-
-### Node NotReady
-
-```bash
-kubectl describe node <node>                 # check Conditions and Events
-kubectl get events -A --sort-by='.lastTimestamp' | grep -i <node>
-# SSH to node via Tailscale, check k3s service:
-sudo systemctl status k3s
-sudo journalctl -u k3s -f
-```
-
-### Ingress / TLS not working
-
-```bash
-kubectl describe ingress <name> -n <ns>
-kubectl get certificates -n <ns>
-kubectl describe certificate <name> -n <ns>
-kubectl get challenges -n <ns>
-kubectl logs -n cert-manager -l app=cert-manager -f
-kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx -f
-```
-
-### CNPG primary down / failover
-
-```bash
-kubectl get pods -n <ns> -l cnpg.io/cluster=<cluster-name>
-kubectl cnpg status <cluster-name> -n <ns>
-# CNPG promotes a standby automatically. Verify new primary:
-kubectl get pods -n <ns> -l cnpg.io/instanceRole=primary
-# Check replication lag from new primary:
-kubectl cnpg psql <cluster-name> -n <ns> -- \
-  -c "SELECT * FROM pg_stat_replication;"
-```
-
-### Dropped network traffic (Cilium)
-
-```bash
-cilium status
-hubble observe --verdict DROPPED -n <ns> --follow
-kubectl exec -n kube-system <cilium-pod> -- cilium monitor --type drop
-kubectl get cnp -n <ns>    # check CiliumNetworkPolicy
-```
-
-### ArgoCD app OutOfSync
-
-ArgoCD syncs automatically on push to `main`. If something is stuck:
-
-```bash
-# Check app status and events via kubectl
-kubectl get applications -n argocd
-kubectl describe application <app-name> -n argocd
-kubectl get events -n argocd --sort-by='.lastTimestamp'
-
-# Force a re-sync via port-forward + argocd CLI (if installed locally)
-kubectl port-forward svc/argocd-server -n argocd 8080:443 &
-argocd login localhost:8080 --insecure --username admin --password <password>
-argocd app sync <app-name> --prune
-argocd app diff <app-name>
-```
-
-### Kyverno blocking a resource
-
-```bash
-kubectl get policyreports -A
-kubectl describe clusterpolicy <policy-name>
-# Check admission webhook events:
-kubectl get events -n <ns> --field-selector=reason=PolicyViolation
-```
-
----
-
-## J. Upgrade Procedures
-
-### K3s version upgrade
-
-```bash
-# 1. Update k3s version in Packer template
-# 2. Build new golden image: task packer:hz:k3s
-# 3. Update image reference in Terraform
-# 4. Rolling node replacement via Terraform (drain → replace → uncordon)
-kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
-# After node replaced:
-kubectl uncordon <node>
-```
-
-### Platform component upgrade (ArgoCD-managed)
-
-```bash
-# 1. Update chart version or image tag in infrastructure/kubernetes/manifests/
-# 2. Commit and push to main — ArgoCD auto-syncs
-# 3. Verify sync via kubectl:
-kubectl get applications -n argocd
-kubectl describe application <app-name> -n argocd
-```
-
-### CNPG upgrade
-
-Follow CloudNativePG upgrade docs. Generally: update the operator first, then the cluster CR `imageName` field.
-
-```bash
-# Update operator (via ArgoCD manifest update)
-# Then update cluster image:
-kubectl patch cluster <cluster-name> -n <ns> \
-  --type=merge -p '{"spec":{"imageName":"ghcr.io/cloudnative-pg/postgresql:<new-version>"}}'
-kubectl cnpg status <cluster-name> -n <ns>   # watch rolling update
-```
-
----
-
-## K. Terraform State Issues
-
-If a `task hz:*` or `task do:*` command fails with backend errors:
-
-1. Verify GCS credentials path in `.env` matches the `keys/` directory.
-2. Check the backend config in `Taskfile.yml` — bucket name and prefix must match the actual GCS bucket.
-3. Run `terraform init -reconfigure` inside the relevant provider directory if the backend has changed.
-4. Never run `terraform force-unlock` without confirming no other operator holds the lock.
+> Do not commit secrets, private keys, or service account JSON files. Use `.env` for local dev (gitignored). Use Sealed Secrets for in-cluster secrets.

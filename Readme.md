@@ -16,6 +16,8 @@ A high-performance PaaS for Go, Rust, and Zig static binary workloads. Built on 
 ### Infrastructure
 | Component | Technology |
 |---|---|
+| Bare metal | Hivelocity (Dallas hub) — 10 Gbps, 20 TB unmetered egress |
+| Edge router | Hivelocity Floating IP → Traefik/Pingora on bare metal (zero egress cost) |
 | Orchestration | K3s |
 | Provisioning | Terraform + Packer (hardened Ubuntu golden images) |
 | GitOps | ArgoCD (immutable, sync-wave ordered) |
@@ -27,6 +29,10 @@ A high-performance PaaS for Go, Rust, and Zig static binary workloads. Built on 
 | Database operator | CloudNativePG (HA PostgreSQL) |
 | Observability | VictoriaMetrics + Grafana + Loki + Fluent Bit |
 | Ingress | ingress-nginx + cert-manager (Let's Encrypt TLS) |
+
+### Egress Architecture
+
+All public traffic flows through a Hivelocity Floating IP mapped to the bare-metal edge node. This keeps egress entirely within Hivelocity's unmetered 20 TB/month bandwidth pool — avoiding per-GB billing from cloud VPS providers. The Floating IP can be reassigned to a secondary node via the Hivelocity API for zero-downtime failover.
 
 ## Project Structure
 
@@ -53,11 +59,11 @@ A high-performance PaaS for Go, Rust, and Zig static binary workloads. Built on 
 ├── infrastructure/
 │   ├── packer/                    # golden image builds (Ubuntu + K3s + gVisor)
 │   ├── kubernetes/                # ArgoCD app manifests + platform component configs
-│   └── terraform/                 # cloud resource provisioning
-│       ├── modules/               # k3s_node, networking, etc.
-│       └── providers/             # hetzner/, digitalocean/
+│   └── terraform/                 # resource provisioning
+│       ├── modules/               # k3s_node, networking, floating_ip, etc.
+│       └── providers/             # hivelocity/
 ├── proto/                         # Protobuf definitions
-├── K8s.md                         # kubectl + K3s + ArgoCD + Cilium command reference
+├── K8s.md                         # kubectl + K3s + ArgoCD + Cilium + CNPG command reference
 ├── POSTGRES.md                    # PostgreSQL + CNPG command reference
 ├── RUNBOOK.md                     # operational procedures
 └── Taskfile.yml                   # dev/infra task runner
