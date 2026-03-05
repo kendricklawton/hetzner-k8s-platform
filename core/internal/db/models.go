@@ -13,7 +13,7 @@ import (
 
 type AuditLog struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -26,7 +26,7 @@ type AuditLog struct {
 
 type AuditLog202601 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -39,7 +39,7 @@ type AuditLog202601 struct {
 
 type AuditLog202602 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -52,7 +52,7 @@ type AuditLog202602 struct {
 
 type AuditLog202603 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -65,7 +65,7 @@ type AuditLog202603 struct {
 
 type AuditLog202604 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -78,7 +78,7 @@ type AuditLog202604 struct {
 
 type AuditLog202605 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -91,7 +91,7 @@ type AuditLog202605 struct {
 
 type AuditLog202606 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -104,7 +104,7 @@ type AuditLog202606 struct {
 
 type AuditLog202607 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -117,7 +117,7 @@ type AuditLog202607 struct {
 
 type AuditLog202608 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -130,7 +130,7 @@ type AuditLog202608 struct {
 
 type AuditLog202609 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -143,7 +143,7 @@ type AuditLog202609 struct {
 
 type AuditLog202610 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -156,7 +156,7 @@ type AuditLog202610 struct {
 
 type AuditLog202611 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -169,7 +169,7 @@ type AuditLog202611 struct {
 
 type AuditLog202612 struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -182,7 +182,7 @@ type AuditLog202612 struct {
 
 type AuditLogDefault struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -350,7 +350,7 @@ type Domain struct {
 
 type Project struct {
 	ID              uuid.UUID          `json:"id"`
-	TeamID          uuid.UUID          `json:"team_id"`
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
 	Name            string             `json:"name"`
 	Framework       string             `json:"framework"`
 	RepoUrl         string             `json:"repo_url"`
@@ -376,26 +376,9 @@ type ProjectEnvVar struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-type Team struct {
-	ID                   uuid.UUID          `json:"id"`
-	Name                 string             `json:"name"`
-	Slug                 string             `json:"slug"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-}
-
-type TeamMember struct {
-	TeamID    uuid.UUID          `json:"team_id"`
-	UserID    uuid.UUID          `json:"user_id"`
-	Role      string             `json:"role"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
 type UsageRecord struct {
 	ID          uuid.UUID          `json:"id"`
-	TeamID      uuid.UUID          `json:"team_id"`
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
 	Metric      string             `json:"metric"`
 	Quantity    pgtype.Numeric     `json:"quantity"`
 	PeriodStart pgtype.Date        `json:"period_start"`
@@ -410,9 +393,9 @@ type User struct {
 	AvatarUrl        pgtype.Text        `json:"avatar_url"`
 	StripeCustomerID pgtype.Text        `json:"stripe_customer_id"`
 	Tier             string             `json:"tier"`
-	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Webhook struct {
@@ -425,4 +408,21 @@ type Webhook struct {
 	IsActive            bool               `json:"is_active"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Workspace struct {
+	ID                   uuid.UUID          `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type WorkspaceMember struct {
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }

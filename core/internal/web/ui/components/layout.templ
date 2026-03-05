@@ -9,7 +9,7 @@ templ Layout(title string, userName string) {
 			<title>{ title }</title>
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
 			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-			<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet"/>
+			<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 			<link rel="stylesheet" href="/static/styles.css"/>
 			// HTMX & Alpine.js
 			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -42,9 +42,9 @@ templ Layout(title string, userName string) {
 			<header
 				class="fixed top-0 left-0 w-full z-40 bg-zinc-50 dark:bg-atom-bg"
 				:class="scrolled ? 'border-b border-zinc-200 dark:border-atom-border' : ''"
-				x-data="{ mobileOpen: false, productsOpen: false, mobileProductsOpen: false, resourcesOpen: false, mobileResourcesOpen: false, currentPath: window.location.pathname, scrolled: false }"
+				x-data="{ mobileOpen: false, resourcesOpen: false, mobileResourcesOpen: false, currentPath: window.location.pathname, scrolled: false }"
 				@scroll.window="scrolled = window.scrollY > 0"
-				@keydown.escape.window="mobileOpen = false; productsOpen = false; resourcesOpen = false"
+				@keydown.escape.window="mobileOpen = false; resourcesOpen = false"
 				@htmx:after-settle.window="currentPath = window.location.pathname"
 			>
 				// Nav bar row
@@ -67,51 +67,10 @@ templ Layout(title string, userName string) {
 						class="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest shrink-0 mr-4"
 					>
 						<i data-lucide="layers" width="16" height="16" class="shrink-0"></i>
-						<span class="hidden lg:inline">Project Platform</span>
+						<span class="hidden lg:inline">Machine Name</span>
 					</a>
 					// Desktop center nav (visible lg+)
 					<nav class="hidden lg:flex items-center flex-1 gap-0 h-full">
-						// Products dropdown
-						<div
-							class="relative h-full flex items-center"
-							@mouseenter="productsOpen = true"
-							@mouseleave="productsOpen = false"
-						>
-							<button
-								class="nav-item flex items-center gap-1.5 px-4 h-full text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white cursor-pointer"
-								@click="productsOpen = !productsOpen"
-							>
-								<span>Products</span>
-							</button>
-							<div
-								x-show="productsOpen"
-								style="display:none"
-								class="absolute top-full left-0 w-64 bg-white dark:bg-atom-surface border border-zinc-200 dark:border-atom-border shadow-lg"
-							>
-								<a
-									href="/cloud"
-									hx-get="/cloud"
-									hx-target="#main-content"
-									hx-push-url="/cloud"
-									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-100 dark:border-atom-border"
-									@click="productsOpen = false"
-								>
-									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Cloud</span>
-									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Serverless containers. Scale to zero.</span>
-								</a>
-								<a
-									href="/metal"
-									hx-get="/metal"
-									hx-target="#main-content"
-									hx-push-url="/metal"
-									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors"
-									@click="productsOpen = false"
-								>
-									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Metal</span>
-									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Firecracker microVMs. Near-native performance.</span>
-								</a>
-							</div>
-						</div>
 						// Resources dropdown
 						<div
 							class="relative h-full flex items-center"
@@ -119,7 +78,7 @@ templ Layout(title string, userName string) {
 							@mouseleave="resourcesOpen = false"
 						>
 							<button
-								class="nav-item flex items-center gap-1.5 px-4 h-full text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white cursor-pointer"
+								class="nav-item flex items-center gap-1.5 px-4 h-full text-sm text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white cursor-pointer"
 								@click="resourcesOpen = !resourcesOpen"
 							>
 								<span>Resources</span>
@@ -137,8 +96,8 @@ templ Layout(title string, userName string) {
 									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-100 dark:border-atom-border"
 									@click="resourcesOpen = false"
 								>
-									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Changelog</span>
-									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
+									<span class="block text-sm text-zinc-900 dark:text-atom-fg">Changelog</span>
+									<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
 								</a>
 								<a
 									href="/templates"
@@ -148,8 +107,8 @@ templ Layout(title string, userName string) {
 									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-100 dark:border-atom-border"
 									@click="resourcesOpen = false"
 								>
-									<span class="block text-xs text-zinc-900 dark:text-atom-fg">Templates</span>
-									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
+									<span class="block text-sm text-zinc-900 dark:text-atom-fg">Templates</span>
+									<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
 								</a>
 								<a
 									href="/about"
@@ -159,8 +118,8 @@ templ Layout(title string, userName string) {
 									class="block px-4 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors"
 									@click="resourcesOpen = false"
 								>
-									<span class="block text-xs text-zinc-900 dark:text-atom-fg">About</span>
-									<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Our mission &amp; founder story</span>
+									<span class="block text-sm text-zinc-900 dark:text-atom-fg">About</span>
+									<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Our mission &amp; founder story</span>
 								</a>
 							</div>
 						</div>
@@ -170,7 +129,7 @@ templ Layout(title string, userName string) {
 							hx-get="/pricing"
 							hx-target="#main-content"
 							hx-push-url="/pricing"
-							class="nav-item px-4 h-full flex items-center text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
+							class="nav-item px-4 h-full flex items-center text-sm text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
 							:class="currentPath === '/pricing' ? 'border-b-2 border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : ''"
 						>
 							Pricing
@@ -181,26 +140,43 @@ templ Layout(title string, userName string) {
 							hx-get="/docs/getting-started/quickstart"
 							hx-target="#main-content"
 							hx-push-url="/docs/getting-started/quickstart"
-							class="nav-item px-4 h-full flex items-center text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
+							class="nav-item px-4 h-full flex items-center text-sm text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
 							:class="currentPath.startsWith('/docs') ? 'border-b-2 border-zinc-900 dark:border-white text-zinc-900 dark:text-white' : ''"
 						>
 							Docs
 						</a>
 					</nav>
-					// Right: Sign In (desktop only) + Get Started (always)
+					// Right: auth-aware nav
 					<div class="flex items-center ml-auto h-full">
-						<a
-							href="/auth/login"
-							class="nav-item flex items-center px-4 h-full text-xs text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
-						>
-							Sign In
-						</a>
-						<a
-							href="/auth/login"
-							class="flex items-center px-5 h-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs tracking-widest hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors shrink-0"
-						>
-							Get Started
-						</a>
+						if userName != "" {
+							<form method="POST" action="/auth/logout" class="flex items-center h-full">
+								<button
+									type="submit"
+									class="nav-item flex items-center px-4 h-full text-sm text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white cursor-pointer"
+								>
+									Sign Out
+								</button>
+							</form>
+							<a
+								href="/dashboard"
+								class="flex items-center px-5 h-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm tracking-widest hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors shrink-0"
+							>
+								Workspace
+							</a>
+						} else {
+							<a
+								href="/auth/login"
+								class="nav-item flex items-center px-4 h-full text-sm text-zinc-600 dark:text-atom-fg hover:text-zinc-900 dark:hover:text-white"
+							>
+								Sign In
+							</a>
+							<a
+								href="/auth/login"
+								class="flex items-center px-5 h-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm tracking-widest hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors shrink-0"
+							>
+								Get Started
+							</a>
+						}
 					</div>
 				</div>
 				// Mobile menu — shown below lg
@@ -209,39 +185,6 @@ templ Layout(title string, userName string) {
 					style="display:none"
 					class="lg:hidden absolute top-12 left-0 w-full bg-white dark:bg-atom-bg border-b border-zinc-200 dark:border-atom-border overflow-y-auto"
 				>
-					// Products (expandable)
-					<button
-						class="w-full flex items-center justify-between px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
-						@click="mobileProductsOpen = !mobileProductsOpen"
-					>
-						<span>Products</span>
-						<span x-show="!mobileProductsOpen"><i data-lucide="chevron-down" width="14" height="14"></i></span>
-						<span x-show="mobileProductsOpen" style="display:none"><i data-lucide="chevron-up" width="14" height="14"></i></span>
-					</button>
-					<div x-show="mobileProductsOpen" style="display:none" class="bg-zinc-50 dark:bg-atom-surface">
-						<a
-							href="/cloud"
-							hx-get="/cloud"
-							hx-target="#main-content"
-							hx-push-url="/cloud"
-							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
-							@click="mobileOpen = false; mobileProductsOpen = false"
-						>
-							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Cloud</span>
-							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Serverless containers. Scale to zero.</span>
-						</a>
-						<a
-							href="/metal"
-							hx-get="/metal"
-							hx-target="#main-content"
-							hx-push-url="/metal"
-							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
-							@click="mobileOpen = false; mobileProductsOpen = false"
-						>
-							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Machine Metal</span>
-							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Firecracker microVMs. Near-native performance.</span>
-						</a>
-					</div>
 					// Resources (expandable)
 					<button
 						class="w-full flex items-center justify-between px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
@@ -260,8 +203,8 @@ templ Layout(title string, userName string) {
 							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
 							@click="mobileOpen = false; mobileResourcesOpen = false"
 						>
-							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Changelog</span>
-							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
+							<span class="block text-sm text-zinc-900 dark:text-atom-fg">Changelog</span>
+							<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Platform updates &amp; release notes</span>
 						</a>
 						<a
 							href="/templates"
@@ -271,8 +214,8 @@ templ Layout(title string, userName string) {
 							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
 							@click="mobileOpen = false; mobileResourcesOpen = false"
 						>
-							<span class="block text-xs text-zinc-900 dark:text-atom-fg">Templates</span>
-							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
+							<span class="block text-sm text-zinc-900 dark:text-atom-fg">Templates</span>
+							<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Go + HTMX + Alpine starter examples</span>
 						</a>
 						<a
 							href="/about"
@@ -282,8 +225,8 @@ templ Layout(title string, userName string) {
 							class="block px-8 py-3 hover:bg-zinc-50 dark:hover:bg-atom-bg transition-colors border-b border-zinc-200 dark:border-atom-border"
 							@click="mobileOpen = false; mobileResourcesOpen = false"
 						>
-							<span class="block text-xs text-zinc-900 dark:text-atom-fg">About</span>
-							<span class="block text-[11px] text-zinc-400 dark:text-atom-muted mt-0.5">Our mission &amp; founder story</span>
+							<span class="block text-sm text-zinc-900 dark:text-atom-fg">About</span>
+							<span class="block text-xs text-zinc-400 dark:text-atom-muted mt-0.5">Our mission &amp; founder story</span>
 						</a>
 					</div>
 					// Docs
@@ -308,14 +251,33 @@ templ Layout(title string, userName string) {
 					>
 						Pricing
 					</a>
-					// Sign In
-					<a
-						href="/auth/login"
-						class="flex items-center px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
-						@click="mobileOpen = false"
-					>
-						Sign In
-					</a>
+					// Sign In / Dashboard
+					if userName != "" {
+						<form method="POST" action="/auth/logout">
+							<button
+								type="submit"
+								class="w-full flex items-center px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
+								@click="mobileOpen = false"
+							>
+								Sign Out
+							</button>
+						</form>
+						<a
+							href="/dashboard"
+							class="flex items-center px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
+							@click="mobileOpen = false"
+						>
+							Dashboard
+						</a>
+					} else {
+						<a
+							href="/auth/login"
+							class="flex items-center px-6 py-4 text-sm text-zinc-900 dark:text-atom-fg border-b border-zinc-200 dark:border-atom-border"
+							@click="mobileOpen = false"
+						>
+							Sign In
+						</a>
+					}
 				</div>
 			</header>
 			// Main Content
@@ -329,7 +291,7 @@ templ Layout(title string, userName string) {
 					<div class="grid grid-cols-2 md:grid-cols-5 gap-8 pb-10 border-b border-zinc-200 dark:border-atom-border">
 						// Brand
 						<div class="col-span-2 md:col-span-1 flex flex-col gap-2">
-							<span class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Project Platform</span>
+							<span class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Machine Name</span>
 							<span class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted leading-relaxed">Deploy, scale, and manage services — built for developers.</span>
 						</div>
 						// Product

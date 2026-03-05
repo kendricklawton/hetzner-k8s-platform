@@ -19,8 +19,8 @@ INSERT INTO domains (id, project_id, domain)
 SELECT $1, $2, $3
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $4 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $4 AND wm.role IN ('owner', 'member')
 )
 RETURNING id, project_id, domain, is_verified, verification_type, verification_token, tls_status, created_at, updated_at
 `
@@ -57,37 +57,37 @@ func (q *Queries) AddDomain(ctx context.Context, arg AddDomainParams) (Domain, e
 	return i, err
 }
 
-const addTeamMember = `-- name: AddTeamMember :one
+const addWorkspaceMember = `-- name: AddWorkspaceMember :one
 
-INSERT INTO team_members (team_id, user_id, role)
+INSERT INTO workspace_members (workspace_id, user_id, role)
 SELECT $1, $2, $3
 WHERE EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
 )
-RETURNING team_id, user_id, role, created_at
+RETURNING workspace_id, user_id, role, created_at
 `
 
-type AddTeamMemberParams struct {
-	TeamID   uuid.UUID `json:"team_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	Role     string    `json:"role"`
-	UserID_2 uuid.UUID `json:"user_id_2"`
+type AddWorkspaceMemberParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Role        string    `json:"role"`
+	UserID_2    uuid.UUID `json:"user_id_2"`
 }
 
 // ============================================================================
-// TEAM MEMBERS
+// WORKSPACE MEMBERS
 // ============================================================================
-func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (TeamMember, error) {
-	row := q.db.QueryRow(ctx, addTeamMember,
-		arg.TeamID,
+func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error) {
+	row := q.db.QueryRow(ctx, addWorkspaceMember,
+		arg.WorkspaceID,
 		arg.UserID,
 		arg.Role,
 		arg.UserID_2,
 	)
-	var i TeamMember
+	var i WorkspaceMember
 	err := row.Scan(
-		&i.TeamID,
+		&i.WorkspaceID,
 		&i.UserID,
 		&i.Role,
 		&i.CreatedAt,
@@ -100,8 +100,8 @@ UPDATE deployments SET status = 'canceled'
 WHERE deployments.id = $1 AND deployments.status IN ('queued', 'building')
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = deployments.project_id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = deployments.project_id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
 RETURNING id, project_id, environment, status, branch, commit_sha, commit_message, deployment_url, build_logs_uri, build_started_at, build_finished_at, deleted_at, created_at, updated_at
 `
@@ -145,14 +145,14 @@ func (q *Queries) CountQueuedDeployments(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const countTeamQueuedDeployments = `-- name: CountTeamQueuedDeployments :one
+const countWorkspaceQueuedDeployments = `-- name: CountWorkspaceQueuedDeployments :one
 SELECT COUNT(*) FROM deployments d
 JOIN projects p ON d.project_id = p.id
-WHERE p.team_id = $1 AND d.status IN ('queued', 'building') AND d.deleted_at IS NULL
+WHERE p.workspace_id = $1 AND d.status IN ('queued', 'building') AND d.deleted_at IS NULL
 `
 
-func (q *Queries) CountTeamQueuedDeployments(ctx context.Context, teamID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countTeamQueuedDeployments, teamID)
+func (q *Queries) CountWorkspaceQueuedDeployments(ctx context.Context, workspaceID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countWorkspaceQueuedDeployments, workspaceID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -160,13 +160,13 @@ func (q *Queries) CountTeamQueuedDeployments(ctx context.Context, teamID uuid.UU
 
 const createAuditEntry = `-- name: CreateAuditEntry :exec
 
-INSERT INTO audit_log (id, team_id, actor_id, action, resource_type, resource_id, metadata, ip_address, user_agent, created_at)
+INSERT INTO audit_log (id, workspace_id, actor_id, action, resource_type, resource_id, metadata, ip_address, user_agent, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type CreateAuditEntryParams struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -183,7 +183,7 @@ type CreateAuditEntryParams struct {
 func (q *Queries) CreateAuditEntry(ctx context.Context, arg CreateAuditEntryParams) error {
 	_, err := q.db.Exec(ctx, createAuditEntry,
 		arg.ID,
-		arg.TeamID,
+		arg.WorkspaceID,
 		arg.ActorID,
 		arg.Action,
 		arg.ResourceType,
@@ -202,8 +202,8 @@ INSERT INTO deployments (id, project_id, environment, branch, commit_sha, commit
 SELECT $1, $2, $3, $4, $5, $6
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $7 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $7 AND wm.role IN ('owner', 'member')
 )
 RETURNING id, project_id, environment, status, branch, commit_sha, commit_message, deployment_url, build_logs_uri, build_started_at, build_finished_at, deleted_at, created_at, updated_at
 `
@@ -253,18 +253,18 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 
 const createProject = `-- name: CreateProject :one
 
-INSERT INTO projects (id, team_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory)
+INSERT INTO projects (id, workspace_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory)
 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 WHERE EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $2 AND tm.user_id = $11 AND tm.role IN ('owner', 'member')
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $2 AND wm.user_id = $11 AND wm.role IN ('owner', 'member')
 )
-RETURNING id, team_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory, created_at, updated_at
+RETURNING id, workspace_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory, created_at, updated_at
 `
 
 type CreateProjectParams struct {
 	ID              uuid.UUID   `json:"id"`
-	TeamID          uuid.UUID   `json:"team_id"`
+	WorkspaceID     uuid.UUID   `json:"workspace_id"`
 	Name            string      `json:"name"`
 	Framework       string      `json:"framework"`
 	RepoUrl         string      `json:"repo_url"`
@@ -282,7 +282,7 @@ type CreateProjectParams struct {
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
 	row := q.db.QueryRow(ctx, createProject,
 		arg.ID,
-		arg.TeamID,
+		arg.WorkspaceID,
 		arg.Name,
 		arg.Framework,
 		arg.RepoUrl,
@@ -296,7 +296,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	var i Project
 	err := row.Scan(
 		&i.ID,
-		&i.TeamID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.Framework,
 		&i.RepoUrl,
@@ -311,64 +311,10 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	return i, err
 }
 
-const createTeamWithOwner = `-- name: CreateTeamWithOwner :one
-
-WITH new_team AS (
-    INSERT INTO teams (id, name, slug) VALUES ($1, $2, $3) RETURNING id, name, slug, stripe_subscription_id, deleted_at, created_at, updated_at
-),
-new_member AS (
-    INSERT INTO team_members (team_id, user_id, role)
-    SELECT id, $4, 'owner' FROM new_team
-)
-SELECT id, name, slug, stripe_subscription_id, deleted_at, created_at, updated_at FROM new_team
-`
-
-type CreateTeamWithOwnerParams struct {
-	ID     uuid.UUID `json:"id"`
-	Name   string    `json:"name"`
-	Slug   string    `json:"slug"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-type CreateTeamWithOwnerRow struct {
-	ID                   uuid.UUID          `json:"id"`
-	Name                 string             `json:"name"`
-	Slug                 string             `json:"slug"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-}
-
-// ============================================================================
-// TEAMS
-// ============================================================================
-// Atomic CTE: Creates a team and immediately assigns the creator as the owner.
-// Bypasses the chicken-and-egg RBAC problem natively in Postgres.
-func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error) {
-	row := q.db.QueryRow(ctx, createTeamWithOwner,
-		arg.ID,
-		arg.Name,
-		arg.Slug,
-		arg.UserID,
-	)
-	var i CreateTeamWithOwnerRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Slug,
-		&i.StripeSubscriptionID,
-		&i.DeletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
 
 
-INSERT INTO users (id, email, name) VALUES ($1, $2, $3) RETURNING id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at
+INSERT INTO users (id, email, name) VALUES ($1, $2, $3) RETURNING id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at
 `
 
 type CreateUserParams struct {
@@ -395,9 +341,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -408,8 +354,8 @@ INSERT INTO webhooks (id, project_id, provider, provider_install_id, hook_secret
 SELECT $1, $2, $3, $4, $5, $6
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $7 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $7 AND wm.role IN ('owner', 'member')
 )
 RETURNING id, project_id, provider, provider_install_id, hook_secret_encrypted, events, is_active, created_at, updated_at
 `
@@ -452,14 +398,68 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (W
 	return i, err
 }
 
+const createWorkspaceWithOwner = `-- name: CreateWorkspaceWithOwner :one
+
+WITH new_workspace AS (
+    INSERT INTO workspaces (id, name, slug) VALUES ($1, $2, $3) RETURNING id, name, slug, stripe_subscription_id, created_at, updated_at, deleted_at
+),
+new_member AS (
+    INSERT INTO workspace_members (workspace_id, user_id, role)
+    SELECT id, $4, 'owner' FROM new_workspace
+)
+SELECT id, name, slug, stripe_subscription_id, created_at, updated_at, deleted_at FROM new_workspace
+`
+
+type CreateWorkspaceWithOwnerParams struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Slug   string    `json:"slug"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type CreateWorkspaceWithOwnerRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
+}
+
+// ============================================================================
+// WORKSPACES
+// ============================================================================
+// Atomic CTE: Creates a workspace and immediately assigns the creator as the owner.
+// Bypasses the chicken-and-egg RBAC problem natively in Postgres.
+func (q *Queries) CreateWorkspaceWithOwner(ctx context.Context, arg CreateWorkspaceWithOwnerParams) (CreateWorkspaceWithOwnerRow, error) {
+	row := q.db.QueryRow(ctx, createWorkspaceWithOwner,
+		arg.ID,
+		arg.Name,
+		arg.Slug,
+		arg.UserID,
+	)
+	var i CreateWorkspaceWithOwnerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.StripeSubscriptionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const deleteDomain = `-- name: DeleteDomain :execrows
 DELETE FROM domains
 WHERE domains.id = $1
 AND EXISTS (
     SELECT 1 FROM domains d
     JOIN projects p ON d.project_id = p.id
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE d.id = domains.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE d.id = domains.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
 `
 
@@ -481,8 +481,8 @@ DELETE FROM project_env_vars
 WHERE project_id = $1 AND environment = $2 AND key_name = $3
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $1 AND tm.user_id = $4 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $1 AND wm.user_id = $4 AND wm.role IN ('owner', 'member')
 )
 `
 
@@ -506,13 +506,29 @@ func (q *Queries) DeleteEnvVar(ctx context.Context, arg DeleteEnvVarParams) (int
 	return result.RowsAffected(), nil
 }
 
+const deleteOrphanedWorkspaces = `-- name: DeleteOrphanedWorkspaces :exec
+UPDATE workspaces SET deleted_at = NOW() WHERE id IN (
+    SELECT wm.workspace_id FROM workspace_members wm
+    WHERE wm.user_id = $1 AND wm.role = 'owner'
+    AND NOT EXISTS (
+        SELECT 1 FROM workspace_members wm2
+        WHERE wm2.workspace_id = wm.workspace_id AND wm2.user_id != $1
+    )
+) AND deleted_at IS NULL
+`
+
+func (q *Queries) DeleteOrphanedWorkspaces(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteOrphanedWorkspaces, userID)
+	return err
+}
+
 const deleteProject = `-- name: DeleteProject :execrows
 DELETE FROM projects
 WHERE projects.id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = projects.id AND tm.user_id = $2 AND tm.role = 'owner'
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = projects.id AND wm.user_id = $2 AND wm.role = 'owner'
 )
 `
 
@@ -529,14 +545,23 @@ func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) (i
 	return result.RowsAffected(), nil
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const deleteWebhook = `-- name: DeleteWebhook :execrows
 DELETE FROM webhooks
 WHERE webhooks.id = $1
 AND EXISTS (
     SELECT 1 FROM webhooks w
     JOIN projects p ON w.project_id = p.id
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE w.id = webhooks.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE w.id = webhooks.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
 `
 
@@ -614,8 +639,8 @@ func (q *Queries) GetBuildLogs(ctx context.Context, arg GetBuildLogsParams) ([]G
 const getDeployment = `-- name: GetDeployment :one
 SELECT d.id, d.project_id, d.environment, d.status, d.branch, d.commit_sha, d.commit_message, d.deployment_url, d.build_logs_uri, d.build_started_at, d.build_finished_at, d.deleted_at, d.created_at, d.updated_at FROM deployments d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.id = $1 AND tm.user_id = $2 AND d.deleted_at IS NULL
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.id = $1 AND wm.user_id = $2 AND d.deleted_at IS NULL
 `
 
 type GetDeploymentParams struct {
@@ -646,7 +671,7 @@ func (q *Queries) GetDeployment(ctx context.Context, arg GetDeploymentParams) (D
 }
 
 const getDomainByName = `-- name: GetDomainByName :one
-SELECT d.id, d.project_id, d.domain, d.is_verified, d.verification_type, d.verification_token, d.tls_status, d.created_at, d.updated_at, p.id AS project_id, p.team_id FROM domains d
+SELECT d.id, d.project_id, d.domain, d.is_verified, d.verification_type, d.verification_token, d.tls_status, d.created_at, d.updated_at, p.id AS project_id, p.workspace_id FROM domains d
 JOIN projects p ON d.project_id = p.id
 WHERE d.domain = $1 AND d.is_verified = true AND d.tls_status = 'active'
 `
@@ -662,7 +687,7 @@ type GetDomainByNameRow struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	ProjectID_2       uuid.UUID          `json:"project_id_2"`
-	TeamID            uuid.UUID          `json:"team_id"`
+	WorkspaceID       uuid.UUID          `json:"workspace_id"`
 }
 
 func (q *Queries) GetDomainByName(ctx context.Context, domain string) (GetDomainByNameRow, error) {
@@ -679,7 +704,7 @@ func (q *Queries) GetDomainByName(ctx context.Context, domain string) (GetDomain
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ProjectID_2,
-		&i.TeamID,
+		&i.WorkspaceID,
 	)
 	return i, err
 }
@@ -764,9 +789,9 @@ func (q *Queries) GetLatestDeployment(ctx context.Context, arg GetLatestDeployme
 }
 
 const getProject = `-- name: GetProject :one
-SELECT p.id, p.team_id, p.name, p.framework, p.repo_url, p.default_branch, p.root_directory, p.build_command, p.install_command, p.output_directory, p.created_at, p.updated_at FROM projects p
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE p.id = $1 AND tm.user_id = $2
+SELECT p.id, p.workspace_id, p.name, p.framework, p.repo_url, p.default_branch, p.root_directory, p.build_command, p.install_command, p.output_directory, p.created_at, p.updated_at FROM projects p
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE p.id = $1 AND wm.user_id = $2
 `
 
 type GetProjectParams struct {
@@ -779,7 +804,7 @@ func (q *Queries) GetProject(ctx context.Context, arg GetProjectParams) (Project
 	var i Project
 	err := row.Scan(
 		&i.ID,
-		&i.TeamID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.Framework,
 		&i.RepoUrl,
@@ -838,212 +863,8 @@ func (q *Queries) GetStaleBuilds(ctx context.Context) ([]Deployment, error) {
 	return items, nil
 }
 
-const getTeam = `-- name: GetTeam :one
-SELECT id, name, slug, stripe_subscription_id, deleted_at, created_at, updated_at FROM teams WHERE id = $1
-`
-
-func (q *Queries) GetTeam(ctx context.Context, id uuid.UUID) (Team, error) {
-	row := q.db.QueryRow(ctx, getTeam, id)
-	var i Team
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Slug,
-		&i.StripeSubscriptionID,
-		&i.DeletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getTeamBySlug = `-- name: GetTeamBySlug :one
-SELECT id, name, slug, stripe_subscription_id, deleted_at, created_at, updated_at FROM teams WHERE slug = $1 AND deleted_at IS NULL
-`
-
-func (q *Queries) GetTeamBySlug(ctx context.Context, slug string) (Team, error) {
-	row := q.db.QueryRow(ctx, getTeamBySlug, slug)
-	var i Team
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Slug,
-		&i.StripeSubscriptionID,
-		&i.DeletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getTeamMember = `-- name: GetTeamMember :one
-SELECT tm.team_id, tm.user_id, tm.role, tm.created_at, u.email, u.name FROM team_members tm
-JOIN users u ON tm.user_id = u.id
-WHERE tm.team_id = $1 AND tm.user_id = $2
-`
-
-type GetTeamMemberParams struct {
-	TeamID uuid.UUID `json:"team_id"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-type GetTeamMemberRow struct {
-	TeamID    uuid.UUID          `json:"team_id"`
-	UserID    uuid.UUID          `json:"user_id"`
-	Role      string             `json:"role"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Email     string             `json:"email"`
-	Name      string             `json:"name"`
-}
-
-func (q *Queries) GetTeamMember(ctx context.Context, arg GetTeamMemberParams) (GetTeamMemberRow, error) {
-	row := q.db.QueryRow(ctx, getTeamMember, arg.TeamID, arg.UserID)
-	var i GetTeamMemberRow
-	err := row.Scan(
-		&i.TeamID,
-		&i.UserID,
-		&i.Role,
-		&i.CreatedAt,
-		&i.Email,
-		&i.Name,
-	)
-	return i, err
-}
-
-const getTeamUsageDetail = `-- name: GetTeamUsageDetail :many
-SELECT id, team_id, metric, quantity, period_start, period_end, created_at FROM usage_records
-WHERE team_id = $1 AND metric = $2 AND period_start >= $3
-ORDER BY period_start DESC
-LIMIT $4
-`
-
-type GetTeamUsageDetailParams struct {
-	TeamID      uuid.UUID   `json:"team_id"`
-	Metric      string      `json:"metric"`
-	PeriodStart pgtype.Date `json:"period_start"`
-	Limit       int32       `json:"limit"`
-}
-
-func (q *Queries) GetTeamUsageDetail(ctx context.Context, arg GetTeamUsageDetailParams) ([]UsageRecord, error) {
-	rows, err := q.db.Query(ctx, getTeamUsageDetail,
-		arg.TeamID,
-		arg.Metric,
-		arg.PeriodStart,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []UsageRecord
-	for rows.Next() {
-		var i UsageRecord
-		if err := rows.Scan(
-			&i.ID,
-			&i.TeamID,
-			&i.Metric,
-			&i.Quantity,
-			&i.PeriodStart,
-			&i.PeriodEnd,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getTeamUsageSummary = `-- name: GetTeamUsageSummary :many
-SELECT metric, SUM(quantity) AS total
-FROM usage_records
-WHERE team_id = $1 AND period_start >= $2 AND period_end <= $3
-GROUP BY metric
-`
-
-type GetTeamUsageSummaryParams struct {
-	TeamID      uuid.UUID   `json:"team_id"`
-	PeriodStart pgtype.Date `json:"period_start"`
-	PeriodEnd   pgtype.Date `json:"period_end"`
-}
-
-type GetTeamUsageSummaryRow struct {
-	Metric string `json:"metric"`
-	Total  int64  `json:"total"`
-}
-
-func (q *Queries) GetTeamUsageSummary(ctx context.Context, arg GetTeamUsageSummaryParams) ([]GetTeamUsageSummaryRow, error) {
-	rows, err := q.db.Query(ctx, getTeamUsageSummary, arg.TeamID, arg.PeriodStart, arg.PeriodEnd)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTeamUsageSummaryRow
-	for rows.Next() {
-		var i GetTeamUsageSummaryRow
-		if err := rows.Scan(&i.Metric, &i.Total); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getTeamsForUser = `-- name: GetTeamsForUser :many
-SELECT t.id, t.name, t.slug, t.stripe_subscription_id, t.deleted_at, t.created_at, t.updated_at, tm.role FROM teams t
-JOIN team_members tm ON t.id = tm.team_id
-WHERE tm.user_id = $1 AND t.deleted_at IS NULL
-ORDER BY t.name
-`
-
-type GetTeamsForUserRow struct {
-	ID                   uuid.UUID          `json:"id"`
-	Name                 string             `json:"name"`
-	Slug                 string             `json:"slug"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Role                 string             `json:"role"`
-}
-
-func (q *Queries) GetTeamsForUser(ctx context.Context, userID uuid.UUID) ([]GetTeamsForUserRow, error) {
-	rows, err := q.db.Query(ctx, getTeamsForUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTeamsForUserRow
-	for rows.Next() {
-		var i GetTeamsForUserRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Slug,
-			&i.StripeSubscriptionID,
-			&i.DeletedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Role,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getUser = `-- name: GetUser :one
-SELECT id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND deleted_at IS NULL
+SELECT id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -1056,15 +877,15 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at FROM users WHERE email = $1 AND deleted_at IS NULL
+SELECT id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -1077,15 +898,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getWebhookByProviderInstall = `-- name: GetWebhookByProviderInstall :one
-SELECT w.id, w.project_id, w.provider, w.provider_install_id, w.hook_secret_encrypted, w.events, w.is_active, w.created_at, w.updated_at, p.team_id FROM webhooks w
+SELECT w.id, w.project_id, w.provider, w.provider_install_id, w.hook_secret_encrypted, w.events, w.is_active, w.created_at, w.updated_at, p.workspace_id FROM webhooks w
 JOIN projects p ON w.project_id = p.id
 WHERE w.provider = $1 AND w.provider_install_id = $2 AND w.is_active = true
 `
@@ -1105,7 +926,7 @@ type GetWebhookByProviderInstallRow struct {
 	IsActive            bool               `json:"is_active"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-	TeamID              uuid.UUID          `json:"team_id"`
+	WorkspaceID         uuid.UUID          `json:"workspace_id"`
 }
 
 func (q *Queries) GetWebhookByProviderInstall(ctx context.Context, arg GetWebhookByProviderInstallParams) (GetWebhookByProviderInstallRow, error) {
@@ -1121,9 +942,213 @@ func (q *Queries) GetWebhookByProviderInstall(ctx context.Context, arg GetWebhoo
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TeamID,
+		&i.WorkspaceID,
 	)
 	return i, err
+}
+
+const getWorkspace = `-- name: GetWorkspace :one
+SELECT id, name, slug, stripe_subscription_id, created_at, updated_at, deleted_at FROM workspaces WHERE id = $1
+`
+
+func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error) {
+	row := q.db.QueryRow(ctx, getWorkspace, id)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.StripeSubscriptionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
+SELECT id, name, slug, stripe_subscription_id, created_at, updated_at, deleted_at FROM workspaces WHERE slug = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceBySlug, slug)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.StripeSubscriptionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getWorkspaceMember = `-- name: GetWorkspaceMember :one
+SELECT wm.workspace_id, wm.user_id, wm.role, wm.created_at, u.email, u.name FROM workspace_members wm
+JOIN users u ON wm.user_id = u.id
+WHERE wm.workspace_id = $1 AND wm.user_id = $2
+`
+
+type GetWorkspaceMemberParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	UserID      uuid.UUID `json:"user_id"`
+}
+
+type GetWorkspaceMemberRow struct {
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Email       string             `json:"email"`
+	Name        string             `json:"name"`
+}
+
+func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (GetWorkspaceMemberRow, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceMember, arg.WorkspaceID, arg.UserID)
+	var i GetWorkspaceMemberRow
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.Email,
+		&i.Name,
+	)
+	return i, err
+}
+
+const getWorkspaceUsageDetail = `-- name: GetWorkspaceUsageDetail :many
+SELECT id, workspace_id, metric, quantity, period_start, period_end, created_at FROM usage_records
+WHERE workspace_id = $1 AND metric = $2 AND period_start >= $3
+ORDER BY period_start DESC
+LIMIT $4
+`
+
+type GetWorkspaceUsageDetailParams struct {
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	Metric      string      `json:"metric"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	Limit       int32       `json:"limit"`
+}
+
+func (q *Queries) GetWorkspaceUsageDetail(ctx context.Context, arg GetWorkspaceUsageDetailParams) ([]UsageRecord, error) {
+	rows, err := q.db.Query(ctx, getWorkspaceUsageDetail,
+		arg.WorkspaceID,
+		arg.Metric,
+		arg.PeriodStart,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UsageRecord
+	for rows.Next() {
+		var i UsageRecord
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Metric,
+			&i.Quantity,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWorkspaceUsageSummary = `-- name: GetWorkspaceUsageSummary :many
+SELECT metric, SUM(quantity) AS total
+FROM usage_records
+WHERE workspace_id = $1 AND period_start >= $2 AND period_end <= $3
+GROUP BY metric
+`
+
+type GetWorkspaceUsageSummaryParams struct {
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
+type GetWorkspaceUsageSummaryRow struct {
+	Metric string `json:"metric"`
+	Total  int64  `json:"total"`
+}
+
+func (q *Queries) GetWorkspaceUsageSummary(ctx context.Context, arg GetWorkspaceUsageSummaryParams) ([]GetWorkspaceUsageSummaryRow, error) {
+	rows, err := q.db.Query(ctx, getWorkspaceUsageSummary, arg.WorkspaceID, arg.PeriodStart, arg.PeriodEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWorkspaceUsageSummaryRow
+	for rows.Next() {
+		var i GetWorkspaceUsageSummaryRow
+		if err := rows.Scan(&i.Metric, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWorkspacesForUser = `-- name: GetWorkspacesForUser :many
+SELECT w.id, w.name, w.slug, w.stripe_subscription_id, w.created_at, w.updated_at, w.deleted_at, wm.role FROM workspaces w
+JOIN workspace_members wm ON w.id = wm.workspace_id
+WHERE wm.user_id = $1 AND w.deleted_at IS NULL
+ORDER BY w.name
+`
+
+type GetWorkspacesForUserRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
+	Role                 string             `json:"role"`
+}
+
+func (q *Queries) GetWorkspacesForUser(ctx context.Context, userID uuid.UUID) ([]GetWorkspacesForUserRow, error) {
+	rows, err := q.db.Query(ctx, getWorkspacesForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWorkspacesForUserRow
+	for rows.Next() {
+		var i GetWorkspacesForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.StripeSubscriptionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 type InsertBuildLogBatchParams struct {
@@ -1171,8 +1196,8 @@ FROM project_env_vars
 WHERE project_id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $1 AND tm.user_id = $2
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $1 AND wm.user_id = $2
 )
 ORDER BY environment, key_name
 `
@@ -1221,8 +1246,8 @@ func (q *Queries) ListEnvVarKeys(ctx context.Context, arg ListEnvVarKeysParams) 
 const listProjectDeployments = `-- name: ListProjectDeployments :many
 SELECT d.id, d.project_id, d.environment, d.status, d.branch, d.commit_sha, d.commit_message, d.deployment_url, d.build_logs_uri, d.build_started_at, d.build_finished_at, d.deleted_at, d.created_at, d.updated_at FROM deployments d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.project_id = $1 AND tm.user_id = $2 AND d.deleted_at IS NULL
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.project_id = $1 AND wm.user_id = $2 AND d.deleted_at IS NULL
 ORDER BY d.created_at DESC
 LIMIT $3 OFFSET $4
 `
@@ -1277,8 +1302,8 @@ func (q *Queries) ListProjectDeployments(ctx context.Context, arg ListProjectDep
 const listProjectDomains = `-- name: ListProjectDomains :many
 SELECT d.id, d.project_id, d.domain, d.is_verified, d.verification_type, d.verification_token, d.tls_status, d.created_at, d.updated_at FROM domains d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.project_id = $1 AND tm.user_id = $2
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.project_id = $1 AND wm.user_id = $2
 ORDER BY d.created_at DESC
 `
 
@@ -1320,8 +1345,8 @@ func (q *Queries) ListProjectDomains(ctx context.Context, arg ListProjectDomains
 const listProjectWebhooks = `-- name: ListProjectWebhooks :many
 SELECT w.id, w.project_id, w.provider, w.provider_install_id, w.hook_secret_encrypted, w.events, w.is_active, w.created_at, w.updated_at FROM webhooks w
 JOIN projects p ON w.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE w.project_id = $1 AND tm.user_id = $2
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE w.project_id = $1 AND wm.user_id = $2
 ORDER BY w.created_at DESC
 `
 
@@ -1361,7 +1386,7 @@ func (q *Queries) ListProjectWebhooks(ctx context.Context, arg ListProjectWebhoo
 }
 
 const listResourceAuditLog = `-- name: ListResourceAuditLog :many
-SELECT al.id, al.team_id, al.actor_id, al.action, al.resource_type, al.resource_id, al.metadata, al.ip_address, al.user_agent, al.created_at, u.email AS actor_email, u.name AS actor_name
+SELECT al.id, al.workspace_id, al.actor_id, al.action, al.resource_type, al.resource_id, al.metadata, al.ip_address, al.user_agent, al.created_at, u.email AS actor_email, u.name AS actor_name
 FROM audit_log al
 LEFT JOIN users u ON al.actor_id = u.id
 WHERE al.resource_type = $1 AND al.resource_id = $2
@@ -1381,7 +1406,7 @@ type ListResourceAuditLogParams struct {
 
 type ListResourceAuditLogRow struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -1411,7 +1436,7 @@ func (q *Queries) ListResourceAuditLog(ctx context.Context, arg ListResourceAudi
 		var i ListResourceAuditLogRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TeamID,
+			&i.WorkspaceID,
 			&i.ActorID,
 			&i.Action,
 			&i.ResourceType,
@@ -1433,28 +1458,28 @@ func (q *Queries) ListResourceAuditLog(ctx context.Context, arg ListResourceAudi
 	return items, nil
 }
 
-const listTeamAuditLog = `-- name: ListTeamAuditLog :many
-SELECT al.id, al.team_id, al.actor_id, al.action, al.resource_type, al.resource_id, al.metadata, al.ip_address, al.user_agent, al.created_at, u.email AS actor_email, u.name AS actor_name
+const listWorkspaceAuditLog = `-- name: ListWorkspaceAuditLog :many
+SELECT al.id, al.workspace_id, al.actor_id, al.action, al.resource_type, al.resource_id, al.metadata, al.ip_address, al.user_agent, al.created_at, u.email AS actor_email, u.name AS actor_name
 FROM audit_log al
 LEFT JOIN users u ON al.actor_id = u.id
-WHERE al.team_id = $1
+WHERE al.workspace_id = $1
 AND al.created_at >= $2
 AND al.created_at < $3
 ORDER BY al.created_at DESC
 LIMIT $4 OFFSET $5
 `
 
-type ListTeamAuditLogParams struct {
-	TeamID      uuid.UUID          `json:"team_id"`
+type ListWorkspaceAuditLogParams struct {
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	CreatedAt_2 pgtype.Timestamptz `json:"created_at_2"`
 	Limit       int32              `json:"limit"`
 	Offset      int32              `json:"offset"`
 }
 
-type ListTeamAuditLogRow struct {
+type ListWorkspaceAuditLogRow struct {
 	ID           uuid.UUID          `json:"id"`
-	TeamID       uuid.UUID          `json:"team_id"`
+	WorkspaceID  uuid.UUID          `json:"workspace_id"`
 	ActorID      pgtype.UUID        `json:"actor_id"`
 	Action       string             `json:"action"`
 	ResourceType string             `json:"resource_type"`
@@ -1467,9 +1492,9 @@ type ListTeamAuditLogRow struct {
 	ActorName    pgtype.Text        `json:"actor_name"`
 }
 
-func (q *Queries) ListTeamAuditLog(ctx context.Context, arg ListTeamAuditLogParams) ([]ListTeamAuditLogRow, error) {
-	rows, err := q.db.Query(ctx, listTeamAuditLog,
-		arg.TeamID,
+func (q *Queries) ListWorkspaceAuditLog(ctx context.Context, arg ListWorkspaceAuditLogParams) ([]ListWorkspaceAuditLogRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceAuditLog,
+		arg.WorkspaceID,
 		arg.CreatedAt,
 		arg.CreatedAt_2,
 		arg.Limit,
@@ -1479,12 +1504,12 @@ func (q *Queries) ListTeamAuditLog(ctx context.Context, arg ListTeamAuditLogPara
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTeamAuditLogRow
+	var items []ListWorkspaceAuditLogRow
 	for rows.Next() {
-		var i ListTeamAuditLogRow
+		var i ListWorkspaceAuditLogRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TeamID,
+			&i.WorkspaceID,
 			&i.ActorID,
 			&i.Action,
 			&i.ResourceType,
@@ -1506,34 +1531,34 @@ func (q *Queries) ListTeamAuditLog(ctx context.Context, arg ListTeamAuditLogPara
 	return items, nil
 }
 
-const listTeamMembers = `-- name: ListTeamMembers :many
-SELECT tm.team_id, tm.user_id, tm.role, tm.created_at, u.email, u.name, u.avatar_url FROM team_members tm
-JOIN users u ON tm.user_id = u.id
-WHERE tm.team_id = $1
-ORDER BY tm.role, u.name
+const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
+SELECT wm.workspace_id, wm.user_id, wm.role, wm.created_at, u.email, u.name, u.avatar_url FROM workspace_members wm
+JOIN users u ON wm.user_id = u.id
+WHERE wm.workspace_id = $1
+ORDER BY wm.role, u.name
 `
 
-type ListTeamMembersRow struct {
-	TeamID    uuid.UUID          `json:"team_id"`
-	UserID    uuid.UUID          `json:"user_id"`
-	Role      string             `json:"role"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Email     string             `json:"email"`
-	Name      string             `json:"name"`
-	AvatarUrl pgtype.Text        `json:"avatar_url"`
+type ListWorkspaceMembersRow struct {
+	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Email       string             `json:"email"`
+	Name        string             `json:"name"`
+	AvatarUrl   pgtype.Text        `json:"avatar_url"`
 }
 
-func (q *Queries) ListTeamMembers(ctx context.Context, teamID uuid.UUID) ([]ListTeamMembersRow, error) {
-	rows, err := q.db.Query(ctx, listTeamMembers, teamID)
+func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceMembers, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTeamMembersRow
+	var items []ListWorkspaceMembersRow
 	for rows.Next() {
-		var i ListTeamMembersRow
+		var i ListWorkspaceMembersRow
 		if err := rows.Scan(
-			&i.TeamID,
+			&i.WorkspaceID,
 			&i.UserID,
 			&i.Role,
 			&i.CreatedAt,
@@ -1551,20 +1576,20 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID uuid.UUID) ([]List
 	return items, nil
 }
 
-const listTeamProjects = `-- name: ListTeamProjects :many
-SELECT p.id, p.team_id, p.name, p.framework, p.repo_url, p.default_branch, p.root_directory, p.build_command, p.install_command, p.output_directory, p.created_at, p.updated_at FROM projects p
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE p.team_id = $1 AND tm.user_id = $2
+const listWorkspaceProjects = `-- name: ListWorkspaceProjects :many
+SELECT p.id, p.workspace_id, p.name, p.framework, p.repo_url, p.default_branch, p.root_directory, p.build_command, p.install_command, p.output_directory, p.created_at, p.updated_at FROM projects p
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE p.workspace_id = $1 AND wm.user_id = $2
 ORDER BY p.created_at DESC
 `
 
-type ListTeamProjectsParams struct {
-	TeamID uuid.UUID `json:"team_id"`
-	UserID uuid.UUID `json:"user_id"`
+type ListWorkspaceProjectsParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	UserID      uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) ListTeamProjects(ctx context.Context, arg ListTeamProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listTeamProjects, arg.TeamID, arg.UserID)
+func (q *Queries) ListWorkspaceProjects(ctx context.Context, arg ListWorkspaceProjectsParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceProjects, arg.WorkspaceID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1574,7 +1599,7 @@ func (q *Queries) ListTeamProjects(ctx context.Context, arg ListTeamProjectsPara
 		var i Project
 		if err := rows.Scan(
 			&i.ID,
-			&i.TeamID,
+			&i.WorkspaceID,
 			&i.Name,
 			&i.Framework,
 			&i.RepoUrl,
@@ -1596,21 +1621,21 @@ func (q *Queries) ListTeamProjects(ctx context.Context, arg ListTeamProjectsPara
 	return items, nil
 }
 
-const onboardUserWithTeam = `-- name: OnboardUserWithTeam :one
+const onboardUserWithWorkspace = `-- name: OnboardUserWithWorkspace :one
 
 WITH new_user AS (
     INSERT INTO users (id, email, name) VALUES ($1, $2, $3) RETURNING id
 ),
-new_team AS (
-    INSERT INTO teams (id, name, slug) VALUES ($4, $5, $6) RETURNING id
+new_workspace AS (
+    INSERT INTO workspaces (id, name, slug) VALUES ($4, $5, $6) RETURNING id
 )
-INSERT INTO team_members (team_id, user_id, role)
-SELECT new_team.id, new_user.id, 'owner'
-FROM new_user, new_team
-RETURNING team_members.team_id
+INSERT INTO workspace_members (workspace_id, user_id, role)
+SELECT new_workspace.id, new_user.id, 'owner'
+FROM new_user, new_workspace
+RETURNING workspace_members.workspace_id
 `
 
-type OnboardUserWithTeamParams struct {
+type OnboardUserWithWorkspaceParams struct {
 	ID     uuid.UUID `json:"id"`
 	Email  string    `json:"email"`
 	Name   string    `json:"name"`
@@ -1622,9 +1647,9 @@ type OnboardUserWithTeamParams struct {
 // ============================================================================
 // ONBOARDING
 // ============================================================================
-// Atomic: creates user + personal team + owner membership in one transaction
-func (q *Queries) OnboardUserWithTeam(ctx context.Context, arg OnboardUserWithTeamParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, onboardUserWithTeam,
+// Atomic: creates user + personal workspace + owner membership in one transaction
+func (q *Queries) OnboardUserWithWorkspace(ctx context.Context, arg OnboardUserWithWorkspaceParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, onboardUserWithWorkspace,
 		arg.ID,
 		arg.Email,
 		arg.Name,
@@ -1632,20 +1657,20 @@ func (q *Queries) OnboardUserWithTeam(ctx context.Context, arg OnboardUserWithTe
 		arg.Name_2,
 		arg.Slug,
 	)
-	var team_id uuid.UUID
-	err := row.Scan(&team_id)
-	return team_id, err
+	var workspace_id uuid.UUID
+	err := row.Scan(&workspace_id)
+	return workspace_id, err
 }
 
 const recordUsage = `-- name: RecordUsage :exec
 
-INSERT INTO usage_records (id, team_id, metric, quantity, period_start, period_end)
+INSERT INTO usage_records (id, workspace_id, metric, quantity, period_start, period_end)
 VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type RecordUsageParams struct {
 	ID          uuid.UUID      `json:"id"`
-	TeamID      uuid.UUID      `json:"team_id"`
+	WorkspaceID uuid.UUID      `json:"workspace_id"`
 	Metric      string         `json:"metric"`
 	Quantity    pgtype.Numeric `json:"quantity"`
 	PeriodStart pgtype.Date    `json:"period_start"`
@@ -1658,7 +1683,7 @@ type RecordUsageParams struct {
 func (q *Queries) RecordUsage(ctx context.Context, arg RecordUsageParams) error {
 	_, err := q.db.Exec(ctx, recordUsage,
 		arg.ID,
-		arg.TeamID,
+		arg.WorkspaceID,
 		arg.Metric,
 		arg.Quantity,
 		arg.PeriodStart,
@@ -1667,29 +1692,29 @@ func (q *Queries) RecordUsage(ctx context.Context, arg RecordUsageParams) error 
 	return err
 }
 
-const removeTeamMember = `-- name: RemoveTeamMember :execrows
-DELETE FROM team_members
-WHERE team_members.team_id = $1 AND team_members.user_id = $2
+const removeWorkspaceMember = `-- name: RemoveWorkspaceMember :execrows
+DELETE FROM workspace_members
+WHERE workspace_members.workspace_id = $1 AND workspace_members.user_id = $2
 AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $3 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $3 AND wm.role = 'owner'
 )
 AND NOT (
-    team_members.role = 'owner' AND (
-        SELECT COUNT(*) FROM team_members tm2
-        WHERE tm2.team_id = $1 AND tm2.role = 'owner'
+    workspace_members.role = 'owner' AND (
+        SELECT COUNT(*) FROM workspace_members wm2
+        WHERE wm2.workspace_id = $1 AND wm2.role = 'owner'
     ) <= 1
 )
 `
 
-type RemoveTeamMemberParams struct {
-	TeamID   uuid.UUID `json:"team_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	UserID_2 uuid.UUID `json:"user_id_2"`
+type RemoveWorkspaceMemberParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	UserID_2    uuid.UUID `json:"user_id_2"`
 }
 
-func (q *Queries) RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removeTeamMember, arg.TeamID, arg.UserID, arg.UserID_2)
+func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID, arg.UserID_2)
 	if err != nil {
 		return 0, err
 	}
@@ -1701,8 +1726,8 @@ UPDATE deployments SET deleted_at = NOW()
 WHERE deployments.id = $1 AND deployments.deleted_at IS NULL
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = deployments.project_id AND tm.user_id = $2 AND tm.role = 'owner'
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = deployments.project_id AND wm.user_id = $2 AND wm.role = 'owner'
 )
 `
 
@@ -1804,10 +1829,10 @@ UPDATE projects SET
 WHERE projects.id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = projects.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = projects.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
-RETURNING id, team_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory, created_at, updated_at
+RETURNING id, workspace_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory, created_at, updated_at
 `
 
 type UpdateProjectParams struct {
@@ -1839,7 +1864,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 	var i Project
 	err := row.Scan(
 		&i.ID,
-		&i.TeamID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.Framework,
 		&i.RepoUrl,
@@ -1854,83 +1879,8 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 	return i, err
 }
 
-const updateTeam = `-- name: UpdateTeam :one
-UPDATE teams SET name = $2, slug = $3
-WHERE teams.id = $1
-AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
-)
-RETURNING id, name, slug, stripe_subscription_id, deleted_at, created_at, updated_at
-`
-
-type UpdateTeamParams struct {
-	ID     uuid.UUID `json:"id"`
-	Name   string    `json:"name"`
-	Slug   string    `json:"slug"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error) {
-	row := q.db.QueryRow(ctx, updateTeam,
-		arg.ID,
-		arg.Name,
-		arg.Slug,
-		arg.UserID,
-	)
-	var i Team
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Slug,
-		&i.StripeSubscriptionID,
-		&i.DeletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateTeamMemberRole = `-- name: UpdateTeamMemberRole :execrows
-UPDATE team_members SET role = $3
-WHERE team_members.team_id = $1 AND team_members.user_id = $2
-AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
-)
-AND NOT (
-    $3 != 'owner' AND (
-        SELECT COUNT(*) FROM team_members tm2
-        WHERE tm2.team_id = $1 AND tm2.role = 'owner'
-    ) <= 1 AND team_members.user_id = (
-        SELECT tm3.user_id FROM team_members tm3
-        WHERE tm3.team_id = $1 AND tm3.role = 'owner' LIMIT 1
-    )
-)
-`
-
-type UpdateTeamMemberRoleParams struct {
-	TeamID   uuid.UUID `json:"team_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	Role     string    `json:"role"`
-	UserID_2 uuid.UUID `json:"user_id_2"`
-}
-
-func (q *Queries) UpdateTeamMemberRole(ctx context.Context, arg UpdateTeamMemberRoleParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTeamMemberRole,
-		arg.TeamID,
-		arg.UserID,
-		arg.Role,
-		arg.UserID_2,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateUserProfile = `-- name: UpdateUserProfile :one
-UPDATE users SET name = $2, avatar_url = $3 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at
+UPDATE users SET name = $2, avatar_url = $3 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at
 `
 
 type UpdateUserProfileParams struct {
@@ -1949,15 +1899,15 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const updateUserStripeCustomerID = `-- name: UpdateUserStripeCustomerID :one
-UPDATE users SET stripe_customer_id = $2 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at
+UPDATE users SET stripe_customer_id = $2 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at
 `
 
 type UpdateUserStripeCustomerIDParams struct {
@@ -1975,15 +1925,15 @@ func (q *Queries) UpdateUserStripeCustomerID(ctx context.Context, arg UpdateUser
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const updateUserTier = `-- name: UpdateUserTier :one
-UPDATE users SET tier = $2 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, deleted_at, created_at, updated_at
+UPDATE users SET tier = $2 WHERE id = $1 RETURNING id, email, name, avatar_url, stripe_customer_id, tier, created_at, updated_at, deleted_at
 `
 
 type UpdateUserTierParams struct {
@@ -2001,11 +1951,86 @@ func (q *Queries) UpdateUserTier(ctx context.Context, arg UpdateUserTierParams) 
 		&i.AvatarUrl,
 		&i.StripeCustomerID,
 		&i.Tier,
-		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const updateWorkspace = `-- name: UpdateWorkspace :one
+UPDATE workspaces SET name = $2, slug = $3
+WHERE workspaces.id = $1
+AND EXISTS (
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
+)
+RETURNING id, name, slug, stripe_subscription_id, created_at, updated_at, deleted_at
+`
+
+type UpdateWorkspaceParams struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Slug   string    `json:"slug"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error) {
+	row := q.db.QueryRow(ctx, updateWorkspace,
+		arg.ID,
+		arg.Name,
+		arg.Slug,
+		arg.UserID,
+	)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.StripeSubscriptionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateWorkspaceMemberRole = `-- name: UpdateWorkspaceMemberRole :execrows
+UPDATE workspace_members SET role = $3
+WHERE workspace_members.workspace_id = $1 AND workspace_members.user_id = $2
+AND EXISTS (
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
+)
+AND NOT (
+    $3 != 'owner' AND (
+        SELECT COUNT(*) FROM workspace_members wm2
+        WHERE wm2.workspace_id = $1 AND wm2.role = 'owner'
+    ) <= 1 AND workspace_members.user_id = (
+        SELECT wm3.user_id FROM workspace_members wm3
+        WHERE wm3.workspace_id = $1 AND wm3.role = 'owner' LIMIT 1
+    )
+)
+`
+
+type UpdateWorkspaceMemberRoleParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Role        string    `json:"role"`
+	UserID_2    uuid.UUID `json:"user_id_2"`
+}
+
+func (q *Queries) UpdateWorkspaceMemberRole(ctx context.Context, arg UpdateWorkspaceMemberRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateWorkspaceMemberRole,
+		arg.WorkspaceID,
+		arg.UserID,
+		arg.Role,
+		arg.UserID_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertEnvVar = `-- name: UpsertEnvVar :one
@@ -2014,8 +2039,8 @@ INSERT INTO project_env_vars (id, project_id, environment, key_name, encrypted_v
 SELECT $1, $2, $3, $4, $5, $6, $7, $8
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $9 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $9 AND wm.role IN ('owner', 'member')
 )
 ON CONFLICT (project_id, environment, key_name)
 DO UPDATE SET
@@ -2067,31 +2092,6 @@ func (q *Queries) UpsertEnvVar(ctx context.Context, arg UpsertEnvVarParams) (Pro
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const deleteOrphanedTeams = `-- name: DeleteOrphanedTeams :exec
-UPDATE teams SET deleted_at = NOW() WHERE id IN (
-    SELECT tm.team_id FROM team_members tm
-    WHERE tm.user_id = $1 AND tm.role = 'owner'
-    AND NOT EXISTS (
-        SELECT 1 FROM team_members tm2
-        WHERE tm2.team_id = tm.team_id AND tm2.user_id != $1
-    )
-) AND deleted_at IS NULL
-`
-
-func (q *Queries) DeleteOrphanedTeams(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteOrphanedTeams, userID)
-	return err
-}
-
-const deleteUser = `-- name: DeleteUser :exec
-UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUser, id)
-	return err
 }
 
 const verifyDomain = `-- name: VerifyDomain :one

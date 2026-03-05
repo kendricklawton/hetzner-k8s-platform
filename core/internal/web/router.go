@@ -19,6 +19,8 @@ func (h *Handler) Routes() chi.Router {
 
 	// Public routes
 	router.Get("/", h.Splash)
+	router.Get("/liquid", h.LiquidCompute)
+	router.Get("/metal", h.MetalCompute)
 	router.Get("/about", h.About)
 	router.Get("/templates", h.Templates)
 	router.Get("/templates/{slug}", h.TemplateDetail)
@@ -62,8 +64,8 @@ func (h *Handler) Routes() chi.Router {
 		protected.Get("/settings", h.Settings)
 		protected.Get("/account", h.Account)
 		protected.Post("/account/delete", h.AccountDelete)
-		protected.Get("/new-team", h.NewTeam)
-		protected.Post("/new-team", h.NewTeamPost)
+		protected.Get("/new-workspace", h.NewWorkspace)
+		protected.Post("/new-workspace", h.NewWorkspacePost)
 	})
 
 	return router

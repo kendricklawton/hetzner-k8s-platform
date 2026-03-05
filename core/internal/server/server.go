@@ -21,12 +21,12 @@ type Server struct {
 }
 
 func New(cfg *config.ServerConfig, store db.Store, k8sClient *k8s.Client) *Server {
-	teamSvc := service.NewTeamServer(store)
+	workspaceSvc := service.NewWorkspaceServer(store)
 	userSvc := service.NewUserServer(store)
 	authSvc := service.NewAuthService(store)
 
 	registry := api.Services{
-		Team: teamSvc,
+		Workspace: workspaceSvc,
 		User: userSvc,
 		Auth: authSvc,
 	}

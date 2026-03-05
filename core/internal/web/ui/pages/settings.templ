@@ -4,14 +4,14 @@ import "github.com/kendricklawton/project-platform/core/internal/web/ui/componen
 
 // 1. The FULL Page (Used on initial browser load)
 templ SettingsPage(userName string) {
-	@components.Layout("Settings | Platform", userName) {
+	@components.Layout("Settings | Machine Name", userName) {
 		@SettingsContent()
 	}
 }
 
 // 2. The PARTIAL Fragment (Used by HTMX to hot-swap the UI)
 templ SettingsContent() {
-	<title>Settings | Platform</title>
+	<title>Settings | Machine Name</title>
 	<div class="animate-fade-in">
 		// Header
 		<div class="mb-8 border-b border-zinc-200 dark:border-atom-border pb-4">

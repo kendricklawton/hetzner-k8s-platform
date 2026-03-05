@@ -26,7 +26,7 @@ type Handler struct {
 	WorkOSRedirectURI    string
 	WorkOSCLIRedirectURI string
 	UserClient           platformv1connect.UserServiceClient
-	TeamClient           platformv1connect.TeamServiceClient
+	WorkspaceClient      platformv1connect.WorkspaceServiceClient
 }
 
 // NewHandler creates a new Web Handler with all required dependencies.
@@ -39,7 +39,7 @@ func NewHandler(
 	workOSRedirectURI string,
 	workOSCLIRedirectURI string,
 	userClient platformv1connect.UserServiceClient,
-	teamClient platformv1connect.TeamServiceClient,
+	workspaceClient platformv1connect.WorkspaceServiceClient,
 ) *Handler {
 	return &Handler{
 		APIURL:               apiURL,
@@ -50,7 +50,7 @@ func NewHandler(
 		WorkOSRedirectURI:    workOSRedirectURI,
 		WorkOSCLIRedirectURI: workOSCLIRedirectURI,
 		UserClient:           userClient,
-		TeamClient:           teamClient,
+		WorkspaceClient:      workspaceClient,
 	}
 }
 
@@ -102,6 +102,15 @@ func (h *Handler) DashboardRedirect(w http.ResponseWriter, r *http.Request) {
 
 // Splash renders the home page.
 func (h *Handler) Splash(w http.ResponseWriter, r *http.Request) {
+	// Redirect logged-in users straight to their workspace.
+	// Only redirect when both session and slug cookies are present —
+	// partial/stale state falls through to render the splash page.
+	if _, err := r.Cookie(SessionCookieName); err == nil {
+		if slug := GetSlug(r); slug != "" {
+			http.Redirect(w, r, "/"+slug, http.StatusFound)
+			return
+		}
+	}
 	userName := GetDisplayName(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -114,6 +123,44 @@ func (h *Handler) Splash(w http.ResponseWriter, r *http.Request) {
 	}
 
 	component := pages.SplashPage("INITIALIZING PLATFORM...", userName)
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// LiquidCompute renders the Liquid Compute product page.
+func (h *Handler) LiquidCompute(w http.ResponseWriter, r *http.Request) {
+	userName := GetDisplayName(r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if h.isMainContentSwap(r) {
+		component := pages.LiquidComputeContent(userName)
+		if err := component.Render(r.Context(), w); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	component := pages.LiquidComputePage(userName)
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+	}
+}
+
+// MetalCompute renders the Metal Compute product page.
+func (h *Handler) MetalCompute(w http.ResponseWriter, r *http.Request) {
+	userName := GetDisplayName(r)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if h.isMainContentSwap(r) {
+		component := pages.MetalComputeContent(userName)
+		if err := component.Render(r.Context(), w); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	component := pages.MetalComputePage(userName)
 	if err := component.Render(r.Context(), w); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
@@ -566,8 +613,8 @@ func (h *Handler) Settings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// NewTeam renders the create-team page, or the upgrade gate for free users who already have a team.
-func (h *Handler) NewTeam(w http.ResponseWriter, r *http.Request) {
+// NewWorkspace renders the create-workspace page, or the upgrade gate for free users who already have a workspace.
+func (h *Handler) NewWorkspace(w http.ResponseWriter, r *http.Request) {
 	userName := h.dashboardAuth(w, r)
 	if userName == "" {
 		return
@@ -576,14 +623,14 @@ func (h *Handler) NewTeam(w http.ResponseWriter, r *http.Request) {
 	gated := GetTier(r) == "free" && slug != ""
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if h.isDashboardSwap(r) {
-		pages.NewTeamContent(slug, gated, "").Render(r.Context(), w)
+		pages.NewWorkspaceContent(slug, gated, "").Render(r.Context(), w)
 		return
 	}
-	pages.NewTeamPage(userName, slug, gated).Render(r.Context(), w)
+	pages.NewWorkspacePage(userName, slug, gated).Render(r.Context(), w)
 }
 
-// NewTeamPost handles the create-team form submission.
-func (h *Handler) NewTeamPost(w http.ResponseWriter, r *http.Request) {
+// NewWorkspacePost handles the create-workspace form submission.
+func (h *Handler) NewWorkspacePost(w http.ResponseWriter, r *http.Request) {
 	userName := h.dashboardAuth(w, r)
 	if userName == "" {
 		return
@@ -591,14 +638,14 @@ func (h *Handler) NewTeamPost(w http.ResponseWriter, r *http.Request) {
 	slug := GetSlug(r)
 	if err := r.ParseForm(); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		pages.NewTeamContent(slug, false, "Invalid form submission.").Render(r.Context(), w)
+		pages.NewWorkspaceContent(slug, false, "Invalid form submission.").Render(r.Context(), w)
 		return
 	}
 	name := strings.TrimSpace(r.FormValue("name"))
 	newSlug := strings.TrimSpace(r.FormValue("slug"))
 	if name == "" || newSlug == "" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		pages.NewTeamContent(slug, false, "Team name and URL are required.").Render(r.Context(), w)
+		pages.NewWorkspaceContent(slug, false, "Workspace name and URL are required.").Render(r.Context(), w)
 		return
 	}
 	userID, ok := GetTokenFromContext(r.Context())
@@ -606,18 +653,18 @@ func (h *Handler) NewTeamPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
-	req := connect.NewRequest(&pb.CreateTeamRequest{Name: name, Slug: newSlug})
+	req := connect.NewRequest(&pb.CreateWorkspaceRequest{Name: name, Slug: newSlug})
 	req.Header().Set("Authorization", "Bearer "+userID)
-	resp, err := h.TeamClient.CreateTeam(r.Context(), req)
+	resp, err := h.WorkspaceClient.CreateWorkspace(r.Context(), req)
 	if err != nil {
-		log.Printf("NewTeamPost: CreateTeam error: %v", err)
-		errMsg := "Failed to create team. The URL may already be taken."
+		log.Printf("NewWorkspacePost: CreateWorkspace error: %v", err)
+		errMsg := "Failed to create workspace. The URL may already be taken."
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		pages.NewTeamContent(slug, false, errMsg).Render(r.Context(), w)
+		pages.NewWorkspaceContent(slug, false, errMsg).Render(r.Context(), w)
 		return
 	}
 	createdSlug := resp.Msg.GetSlug()
-	// Update slug cookie to the new team
+	// Update slug cookie to the new workspace
 	http.SetCookie(w, &http.Cookie{
 		Name:     slugCookieName,
 		Value:    createdSlug,

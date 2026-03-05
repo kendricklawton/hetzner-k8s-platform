@@ -25,7 +25,7 @@ const (
 	// HttpOnly — read by Go on each request, not by JS.
 	nameCookieName = "platform_name"
 
-	// slugCookieName holds the user's team/account slug (e.g. "k-henry-team").
+	// slugCookieName holds the user's workspace slug (e.g. "acme-corp-workspace").
 	// Used to build slug-scoped URLs like /{slug}/services.
 	slugCookieName = "platform_slug"
 
@@ -47,7 +47,7 @@ const (
 	workosUserIDCookieName = "platform_workos_uid"
 
 	// tierCookieName holds the user's billing tier ("free", "pro", "enterprise").
-	// HttpOnly — read server-side to gate features like new team creation.
+	// HttpOnly — read server-side to gate features like new workspace creation.
 	tierCookieName = "platform_tier"
 )
 
@@ -73,7 +73,7 @@ func GetDisplayName(r *http.Request) string {
 	return cookie.Value
 }
 
-// GetSlug reads the team/account slug cookie for slug-scoped URL routing.
+// GetSlug reads the workspace slug cookie for slug-scoped URL routing.
 // Returns an empty string if the user is not authenticated.
 func GetSlug(r *http.Request) string {
 	cookie, err := r.Cookie(slugCookieName)
@@ -190,7 +190,7 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Provision the user via the Core API (the only layer with DB access)
-	userID, userName, teamSlug, tier, err := h.provisionUserViaAPI(r.Context(), authResp.User.Email, authResp.User.FirstName, authResp.User.LastName)
+	userID, userName, workspaceSlug, tier, err := h.provisionUserViaAPI(r.Context(), authResp.User.Email, authResp.User.FirstName, authResp.User.LastName)
 	if err != nil {
 		log.Printf("provisionUserViaAPI error: %v", err)
 		http.Error(w, "Failed to provision user account", http.StatusInternalServerError)
@@ -240,10 +240,10 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		Expires:  exp,
 	})
 
-	// Slug cookie — HttpOnly, used to build slug-scoped URLs (e.g. /my-team/services).
+	// Slug cookie — HttpOnly, used to build slug-scoped URLs (e.g. /my-workspace/services).
 	http.SetCookie(w, &http.Cookie{
 		Name:     slugCookieName,
-		Value:    teamSlug,
+		Value:    workspaceSlug,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -276,7 +276,11 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		log.Printf("AuthCallback: could not extract WorkOS session ID: %v", err)
 	}
 
-	http.Redirect(w, r, "/"+teamSlug, http.StatusFound)
+	if workspaceSlug == "" {
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/"+workspaceSlug, http.StatusFound)
 }
 
 // AuthLogout clears all session cookies and redirects to the WorkOS logout URL,
@@ -348,7 +352,7 @@ func extractSIDFromJWT(token string) (string, error) {
 }
 
 // provisionUserViaAPI calls POST /v1/auth/provision on the Core API.
-// Returns the user's ID, display name, primary team slug, and billing tier.
+// Returns the user's ID, display name, primary workspace slug, and billing tier.
 func (h *Handler) provisionUserViaAPI(ctx context.Context, email, firstName, lastName string) (userID, userName, slug, tier string, err error) {
 	body, marshalErr := json.Marshal(map[string]string{
 		"email":      email,

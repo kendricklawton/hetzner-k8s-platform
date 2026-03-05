@@ -3,13 +3,13 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ AccountPage(userName string, email string, slug string) {
-	@components.DashboardLayout("Account | Platform", userName, slug, "user", "Account") {
+	@components.DashboardLayout("Account | Machine Name", userName, slug, "user", "Account") {
 		@AccountContent(userName, email, slug)
 	}
 }
 
 templ AccountContent(userName string, email string, slug string) {
-	<div data-page-title="Account" data-page-icon="user" class="p-6 lg:p-8 flex flex-col gap-6">
+	<div data-page-title="Account" data-page-icon="user" class="p-4 flex flex-col gap-4">
 		// Profile
 		<div class="border border-zinc-200 dark:border-atom-border">
 			<div class="px-5 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">
@@ -40,7 +40,7 @@ templ AccountContent(userName string, email string, slug string) {
 					<div class="flex flex-col gap-1">
 						<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Delete Account</span>
 						<span class="text-[11px] text-zinc-500 dark:text-atom-muted leading-relaxed">
-							Permanently deletes your account, all teams you solely own, and all their projects, services, and deployments. This cannot be undone.
+							Permanently deletes your account, all workspaces you solely own, and all their projects, services, and deployments. This cannot be undone.
 						</span>
 					</div>
 					<button

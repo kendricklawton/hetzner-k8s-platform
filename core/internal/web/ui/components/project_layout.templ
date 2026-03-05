@@ -1,6 +1,6 @@
 package components
 
-templ ProjectLayout(title string, userName string, teamSlug string, projectID string, projectName string) {
+templ ProjectLayout(title string, userName string, workspaceSlug string, projectID string, projectName string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -9,7 +9,7 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 			<title>{ title }</title>
 			<link rel="preconnect" href="https://fonts.googleapis.com"/>
 			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-			<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet"/>
+			<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 			<link rel="stylesheet" href="/static/styles.css"/>
 			<style>
 				[x-cloak] { display: none !important; }
@@ -102,7 +102,7 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 				:class="sidebarOpen ? 'translate-x-0 lg:w-72' : '-translate-x-full lg:translate-x-0 lg:w-12'"
 				style="transition: transform 0.15s;"
 			>
-				// ── Sidebar header: workspace selector (unchanged) ───────────────
+				// ── Sidebar header: workspace selector ────────────────────────
 				<div
 					class="relative h-14 flex items-center shrink-0 border-b border-zinc-200 dark:border-atom-border"
 					x-data="{ workspaceOpen: false }"
@@ -121,14 +121,14 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 									class="flex items-center gap-2.5 w-full pl-3 pr-4 h-full hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors"
 								>
 									<div class="w-7 h-7 bg-zinc-900 dark:bg-white flex items-center justify-center shrink-0">
-										if len(teamSlug) > 0 {
-											<span class="text-[10px] font-bold text-white dark:text-zinc-900 uppercase leading-none">{ string([]rune(teamSlug)[0:1]) }</span>
+										if len(workspaceSlug) > 0 {
+											<span class="text-[10px] font-bold text-white dark:text-zinc-900 uppercase leading-none">{ string([]rune(workspaceSlug)[0:1]) }</span>
 										}
 									</div>
-									<span class="text-sm font-semibold text-zinc-900 dark:text-white truncate flex-1 text-left">{ teamSlug }</span>
+									<span class="text-sm font-semibold text-zinc-900 dark:text-white truncate flex-1 text-left">{ workspaceSlug }</span>
 									<i data-lucide="chevrons-up-down" width="13" height="13" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
 								</button>
-								// Workspace dropdown
+								// Team dropdown
 								<div
 									x-show="workspaceOpen"
 									x-cloak
@@ -136,13 +136,13 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 								>
 									<div class="flex items-start gap-3 px-4 py-4 border-b border-zinc-200 dark:border-atom-border">
 										<div class="w-7 h-7 bg-zinc-900 dark:bg-white flex items-center justify-center shrink-0 mt-0.5">
-											if len(teamSlug) > 0 {
-												<span class="text-[10px] font-bold text-white dark:text-zinc-900 uppercase leading-none">{ string([]rune(teamSlug)[0:1]) }</span>
+											if len(workspaceSlug) > 0 {
+												<span class="text-[10px] font-bold text-white dark:text-zinc-900 uppercase leading-none">{ string([]rune(workspaceSlug)[0:1]) }</span>
 											}
 										</div>
 										<div class="flex-1 min-w-0">
 											<div class="flex items-center gap-2 mb-1">
-												<span class="text-sm font-bold text-zinc-900 dark:text-white truncate">{ teamSlug }</span>
+												<span class="text-sm font-bold text-zinc-900 dark:text-white truncate">{ workspaceSlug }</span>
 												<span class="text-[9px] font-bold text-zinc-500 dark:text-atom-muted bg-zinc-100 dark:bg-atom-surface border border-zinc-200 dark:border-atom-border px-1.5 py-0.5 uppercase tracking-wider shrink-0">Free</span>
 											</div>
 											<span class="text-xs text-zinc-500 dark:text-atom-muted">1 member</span>
@@ -150,10 +150,10 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 									</div>
 									<div class="py-1">
 										<a
-											href={ templ.SafeURL("/" + teamSlug + "/billing") }
-											hx-get={ "/" + teamSlug + "/billing" }
+											href={ templ.SafeURL("/" + workspaceSlug + "/billing") }
+											hx-get={ "/" + workspaceSlug + "/billing" }
 											hx-target="#dashboard-content"
-											hx-push-url={ "/" + teamSlug + "/billing" }
+											hx-push-url={ "/" + workspaceSlug + "/billing" }
 											class="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
 											@click="workspaceOpen = false"
 										>
@@ -161,28 +161,28 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 											Billing
 										</a>
 										<a
-											href={ templ.SafeURL("/" + teamSlug + "/settings") }
-											hx-get={ "/" + teamSlug + "/settings" }
+											href={ templ.SafeURL("/" + workspaceSlug + "/settings") }
+											hx-get={ "/" + workspaceSlug + "/settings" }
 											hx-target="#dashboard-content"
-											hx-push-url={ "/" + teamSlug + "/settings" }
+											hx-push-url={ "/" + workspaceSlug + "/settings" }
 											class="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
 											@click="workspaceOpen = false"
 										>
 											<i data-lucide="settings" width="15" height="15" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
-											Team Settings
+											Workspace Settings
 										</a>
 									</div>
 									<div class="border-t border-zinc-200 dark:border-atom-border py-1">
 										<a
-											href="/new-team"
-											hx-get="/new-team"
+											href="/new-workspace"
+											hx-get="/new-workspace"
 											hx-target="#dashboard-content"
-											hx-push-url="/new-team"
+											hx-push-url="/new-workspace"
 											class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-zinc-700 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
 											@click="workspaceOpen = false"
 										>
 											<i data-lucide="plus" width="15" height="15" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
-											New Team
+											New Workspace
 										</a>
 									</div>
 								</div>
@@ -196,7 +196,7 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 							</button>
 						</div>
 					</template>
-					// Collapsed: company icon only
+					// Collapsed: layers icon only
 					<template x-if="!sidebarOpen">
 						<button
 							@click="sidebarOpen = true"
@@ -207,7 +207,7 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 						</button>
 					</template>
 				</div>
-				// ── Project nav ───────────────────────────────────────────────────
+												// ── Project nav ───────────────────────────────────────────────────
 				<nav
 					class="flex flex-col gap-1 flex-1 overflow-y-auto overflow-x-hidden"
 					:class="sidebarOpen ? 'p-3' : 'p-1'"
@@ -216,7 +216,7 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 					<template x-if="sidebarOpen">
 						<div class="px-1 pt-1 pb-3 mb-1 border-b border-zinc-200 dark:border-atom-border">
 							<a
-								href={ templ.SafeURL("/" + teamSlug) }
+								href={ templ.SafeURL("/" + workspaceSlug) }
 								class="flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-atom-muted hover:text-zinc-600 dark:hover:text-atom-fg transition-colors mb-3"
 							>
 								<i data-lucide="arrow-left" width="11" height="11" class="shrink-0"></i>
@@ -230,16 +230,16 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 							</div>
 						</div>
 					</template>
-					@DashNavItem("layout-grid", "Overview", "/"+teamSlug+"/projects/"+projectID)
+					@DashNavItem("layout-grid", "Overview", "/"+workspaceSlug+"/projects/"+projectID)
 					@DashNavSection("Manage")
-					@DashNavItem("settings", "Settings", "/"+teamSlug+"/projects/"+projectID+"/settings")
+					@DashNavItem("settings", "Settings", "/"+workspaceSlug+"/projects/"+projectID+"/settings")
 				</nav>
 				// Bottom actions
 				<div
 					class="flex flex-col gap-1 border-t border-zinc-200 dark:border-atom-border shrink-0"
 					:class="sidebarOpen ? 'p-3' : 'p-1'"
 				>
-					@DashNavItem("life-buoy", "Support", "/"+teamSlug+"/support")
+					@DashNavItem("life-buoy", "Support", "/"+workspaceSlug+"/support")
 				</div>
 			</aside>
 			// ── MAIN ─────────────────────────────────────────────────────────────
@@ -258,34 +258,67 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 					>
 						<i data-lucide="menu" width="16" height="16"></i>
 					</button>
-					// Project name in header
-					<div class="flex items-center gap-2.5 px-4 h-full border-r border-zinc-200 dark:border-atom-border shrink-0">
-						<i id="header-page-icon" data-lucide="folder" width="14" height="14" class="text-zinc-500 dark:text-atom-muted shrink-0"></i>
-						<span id="header-page-title" class="hidden lg:inline text-sm font-medium text-zinc-900 dark:text-white whitespace-nowrap">{ projectName }</span>
+					// Project selector dropdown
+					<div class="relative flex items-center h-full border-r border-zinc-200 dark:border-atom-border shrink-0" @click.outside="projectOpen = false">
+						<button
+							@click="projectOpen = !projectOpen"
+							class="flex items-center gap-2.5 px-4 h-full hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors"
+						>
+							<i data-lucide="folder" width="14" height="14" class="text-zinc-500 dark:text-atom-muted shrink-0"></i>
+							<span class="hidden lg:inline text-sm font-medium text-zinc-900 dark:text-white whitespace-nowrap">{ projectName }</span>
+							<i data-lucide="chevron-down" width="13" height="13" class="text-zinc-400 dark:text-atom-muted hidden lg:block"></i>
+						</button>
+						<div
+							x-show="projectOpen"
+							x-cloak
+							class="absolute left-0 top-full mt-0 w-64 z-50 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg shadow-lg"
+						>
+							<div class="px-3 pt-2 pb-1">
+								<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Switch Project</span>
+							</div>
+							<div class="py-1">
+								<div class="flex items-center gap-2.5 pl-0 pr-3 py-2.5 bg-zinc-100 dark:bg-atom-surface border-l-2 border-zinc-900 dark:border-white">
+									<div class="w-8 flex items-center justify-center shrink-0">
+										<i data-lucide="folder" width="13" height="13" class="text-zinc-900 dark:text-white"></i>
+									</div>
+									<span class="text-xs font-semibold text-zinc-900 dark:text-white truncate flex-1">{ projectName }</span>
+								</div>
+							</div>
+							<div class="border-t border-zinc-200 dark:border-atom-border py-1">
+								<a
+									href={ templ.SafeURL("/" + workspaceSlug) }
+									class="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs text-zinc-600 dark:text-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
+									@click="projectOpen = false"
+								>
+									<i data-lucide="layout-grid" width="13" height="13" class="text-zinc-400 dark:text-atom-muted shrink-0"></i>
+									All Projects
+								</a>
+							</div>
+						</div>
 					</div>
 					// Spacer
 					<div class="flex-1"></div>
 					// Search
 					<button
 						@click="paletteOpen = true"
-						class="hidden lg:flex items-center gap-2 px-4 h-full border-l border-zinc-200 dark:border-atom-border text-xs text-zinc-500 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors shrink-0"
+						class="hidden lg:flex items-center gap-2 px-4 h-full border-l border-zinc-200 dark:border-atom-border text-sm text-zinc-500 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors shrink-0"
 					>
 						<i data-lucide="search" width="13" height="13"></i>
 						<span>Search</span>
 						<kbd class="text-[10px] font-mono text-zinc-400 dark:text-atom-muted px-1 py-0.5 border border-zinc-200 dark:border-atom-border ml-1">⌘K</kbd>
 					</button>
-					// + New
+					// + Add Service
 					<a
-						href={ templ.SafeURL("/" + teamSlug + "/projects/" + projectID + "/new") }
-						class="flex items-center gap-1.5 px-4 h-full border-l border-zinc-200 dark:border-atom-border text-xs text-zinc-600 dark:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors shrink-0"
+						href={ templ.SafeURL("/" + workspaceSlug + "/projects/" + projectID + "/new") }
+						class="flex items-center gap-2 px-5 h-full border-l border-zinc-200 dark:border-atom-border bg-zinc-900 dark:bg-white text-[10px] font-bold text-white dark:text-zinc-900 uppercase tracking-widest hover:opacity-80 transition-opacity shrink-0"
 					>
-						<i data-lucide="plus" width="13" height="13"></i>
-						<span class="hidden sm:inline">New</span>
+						<i data-lucide="plus" width="12" height="12"></i>
+						<span class="hidden sm:inline">Add Service</span>
 					</a>
 					// Upgrade
 					<a
 						href={ templ.SafeURL("/pricing") }
-						class="hidden lg:flex items-center gap-1.5 px-4 h-full border-l border-zinc-200 dark:border-atom-border text-xs text-zinc-600 dark:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors shrink-0"
+						class="hidden lg:flex items-center gap-1.5 px-4 h-full border-l border-zinc-200 dark:border-atom-border text-sm text-zinc-600 dark:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors shrink-0"
 					>
 						<i data-lucide="zap" width="13" height="13"></i>
 						<span>Upgrade</span>
@@ -388,10 +421,10 @@ templ ProjectLayout(title string, userName string, teamSlug string, projectID st
 							<div class="px-3 py-1">
 								<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Project</span>
 							</div>
-							@DashPaletteItem("layout-grid", "Overview", "/"+teamSlug+"/projects/"+projectID)
-							@DashPaletteItem("settings", "Settings", "/"+teamSlug+"/projects/"+projectID+"/settings")
+							@DashPaletteItem("layout-grid", "Overview", "/"+workspaceSlug+"/projects/"+projectID)
+							@DashPaletteItem("settings", "Settings", "/"+workspaceSlug+"/projects/"+projectID+"/settings")
 							<div class="my-1 mx-3 border-t border-zinc-100 dark:border-atom-border"></div>
-							@DashPaletteItem("arrow-left", "Back to Dashboard", "/"+teamSlug)
+							@DashPaletteItem("arrow-left", "Back to Dashboard", "/"+workspaceSlug)
 						</div>
 					</div>
 				</div>

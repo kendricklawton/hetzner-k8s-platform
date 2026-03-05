@@ -3,16 +3,16 @@ package platform.v1;
 
 option go_package = "github.com/kendricklawton/project-platform/gen/go/platform/v1;platformv1";
 
-service TeamService {
-  rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse) {}
+service WorkspaceService {
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (CreateWorkspaceResponse) {}
 }
 
-message CreateTeamRequest {
+message CreateWorkspaceRequest {
   string name = 1;
   string slug = 2;
 }
 
-message CreateTeamResponse {
+message CreateWorkspaceResponse {
   string id = 1;
   string name = 2;
   string slug = 3;

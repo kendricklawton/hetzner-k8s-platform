@@ -86,12 +86,12 @@ func (h *handler) provisionUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the user's primary team slug (created atomically during onboarding).
-	teams, _ := h.Store.GetTeamsForUser(r.Context(), user.ID)
+	// Fetch the user's primary workspace slug (created atomically during onboarding).
+	workspaces, _ := h.Store.GetWorkspacesForUser(r.Context(), user.ID)
 	slug := ""
-	for _, t := range teams {
-		if t.Role == "owner" {
-			slug = t.Slug
+	for _, ws := range workspaces {
+		if ws.Role == "owner" {
+			slug = ws.Slug
 			break
 		}
 	}
@@ -111,7 +111,7 @@ type deleteAccountRequest struct {
 }
 
 // deleteAccount is called by the web BFF to permanently delete a user and all
-// their solely-owned teams. Protected by requireInternal.
+// their solely-owned workspaces. Protected by requireInternal.
 func (h *handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	var req deleteAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

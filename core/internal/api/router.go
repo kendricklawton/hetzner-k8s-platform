@@ -35,8 +35,8 @@ func (h *handler) Routes() chi.Router {
 			rpc.Use(h.requireAuth)
 
 			// Mount ConnectRPC handlers utilizing the DI-injected services
-			teamPath, teamHandler := platformv1connect.NewTeamServiceHandler(h.Services.Team)
-			rpc.Mount(teamPath, teamHandler)
+			workspacePath, workspaceHandler := platformv1connect.NewWorkspaceServiceHandler(h.Services.Workspace)
+			rpc.Mount(workspacePath, workspaceHandler)
 
 			userPath, userHandler := platformv1connect.NewUserServiceHandler(h.Services.User)
 			rpc.Mount(userPath, userHandler)

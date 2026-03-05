@@ -41,19 +41,19 @@ func (s *AuthService) ProvisionUser(ctx context.Context, p UserProfile) (*db.Use
 	if err != nil {
 		return nil, fmt.Errorf("generating user ID: %w", err)
 	}
-	teamID, err := uuid.NewV7()
+	workspaceID, err := uuid.NewV7()
 	if err != nil {
-		return nil, fmt.Errorf("generating team ID: %w", err)
+		return nil, fmt.Errorf("generating workspace ID: %w", err)
 	}
 	fullName := fmt.Sprintf("%s %s", p.FirstName, p.LastName)
 
-	_, err = s.Store.OnboardUserWithTeam(ctx, db.OnboardUserWithTeamParams{
+	_, err = s.Store.OnboardUserWithWorkspace(ctx, db.OnboardUserWithWorkspaceParams{
 		ID:     userID,
 		Email:  p.Email,
 		Name:   fullName,
-		ID_2:   teamID,
-		Name_2: fmt.Sprintf("%s's Team", p.FirstName),
-		Slug:   fmt.Sprintf("%s-team", generateSlug(fullName)),
+		ID_2:   workspaceID,
+		Name_2: "My Workspace",
+		Slug:   fmt.Sprintf("%s-workspace", generateSlug(fullName)),
 	})
 	if err != nil {
 		// Two concurrent logins for the same email can both pass the GetUserByEmail
@@ -74,8 +74,8 @@ func (s *AuthService) ProvisionUser(ctx context.Context, p UserProfile) (*db.Use
 
 func (s *AuthService) DeleteUserWithCleanup(ctx context.Context, userID uuid.UUID) error {
 	return s.Store.ExecTx(ctx, func(q *db.Queries) error {
-		if err := q.DeleteOrphanedTeams(ctx, userID); err != nil {
-			return fmt.Errorf("deleting orphaned teams: %w", err)
+		if err := q.DeleteOrphanedWorkspaces(ctx, userID); err != nil {
+			return fmt.Errorf("deleting orphaned workspaces: %w", err)
 		}
 		return q.DeleteUser(ctx, userID)
 	})

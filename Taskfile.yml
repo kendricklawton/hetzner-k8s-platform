@@ -4,26 +4,11 @@ dotenv: [".env"]
 
 vars:
   PROJECT_NAME: "project-platform"
+  PLATFORM_DATABASE_URL: "{{.PLATFORM_DATABASE_URL}}"
 
-  # PACKER CONFIG
-  PACKER_DIR: "infrastructure/packer"
-
-  # Packer & Terraform Variables - Hetzner
-  HCLOUD_UBUNTU_VERSION: "ubuntu-24.04"
-  HCLOUD_K3S_TYPE: "cpx31"
-  HCLOUD_LB_TYPE: "lb11"
-  HCLOUD_NAT_TYPE: "cpx11"
-  HCLOUD_K3S_SERVER_TYPE: "cpx31"
-  HCLOUD_K3S_AGENT_TYPE: "cpx31"
-
-  # COMPONENT VERSIONS
+  # SHARED COMPONENT VERSIONS
   K3S_VERSION: "v1.29.1+k3s2"
-  HETZNER_CCM_VERSION: "1.29.1"
-  HETZNER_CSI_VERSION: "2.6.0"
-  DIGITALOCEAN_CCM_VERSION: "0.1.58"
-  DIGITALOCEAN_CSI_VERSION: "4.8.0"
   CILIUM_VERSION: "1.15.1"
-  CNPG_VERSION: "1.28.1"
   INGRESS_NGINX_VERSION: "4.14.3"
   SEALED_SECRETS_VERSION: "2.18.1"
   CERT_MANAGER_VERSION: "v1.14.0"
@@ -37,231 +22,16 @@ vars:
   ARGOCD_VERSION: "6.7.11"
   KNATIVE_VERSION: "1.14.0"
 
-  # Database Defaults
-  PLATFORM_DATABASE_URL: "{{.PLATFORM_DATABASE_URL}}"
+# --- INFRASTRUCTURE NAMESPACES ---
+includes:
+  hub:
+    taskfile: ./Taskfile.hub.yml
+    dir: . # Execute tasks from the root directory
+  hz:
+    taskfile: ./Taskfile.hz.yml
+    dir: .
 
 tasks:
-  _packer_build:
-    internal: true
-    silent: true
-    desc: "Generic Packer Build Wrapper for Ubuntu"
-    dir: "{{.ROOT_DIR}}/{{.PACKER_DIR}}"
-    env:
-      PKR_VAR_hcloud_token: "{{.HCLOUD_TOKEN}}"
-      # PKR_VAR_docloud_token: "{{.DOCLOUD_TOKEN}}"
-    cmds:
-      - packer init .
-      - >-
-        packer build {{.BUILD_ARGS}}
-        -var "k3s_version={{.K3S_VERSION}}"
-        -var "hcloud_k3s_type={{.HCLOUD_K3S_TYPE}}"
-        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
-        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
-        .
-
-  packer:hz:
-    desc: "Build Hetzner Cloud Infrastructure"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=*.hcloud.* -parallel-builds=2" }
-
-  packer:hz:nat:
-    desc: "Build ONLY the Hetzner NAT Gateway image"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=nat.hcloud.* -parallel-builds=2" }
-
-  packer:hz:k3s:
-    desc: "Build ONLY the Hetzner K3s image"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=k3s.hcloud.* -parallel-builds=2" }
-
-  packer:do:
-    desc: "Build DigitalOcean Cloud Infrastructure"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=*.docloud.* -parallel-builds=2" }
-
-  packer:do:nat:
-    desc: "Build ONLY the DigitalOcean NAT Gateway image"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=nat.docloud.* -parallel-builds=2" }
-
-  packer:do:k3s:
-    desc: "Build ONLY the DigitalOcean K3s image"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=k3s.docloud.* -parallel-builds=2" }
-
-  _tf:
-    internal: true
-    dir: "{{.ROOT_DIR}}/infrastructure/terraform/providers/{{.PROVIDER}}"
-    vars:
-      TFSTATE_BUCKET: "{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}"
-      CCM_VERSION: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_CCM_VERSION}}{{else}}{{.DIGITALOCEAN_CCM_VERSION}}{{end}}'
-      CSI_VERSION: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_CSI_VERSION}}{{else}}{{.DIGITALOCEAN_CSI_VERSION}}{{end}}'
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}.json"
-      DIGITALOCEAN_TOKEN: "{{.DOCLOUD_TOKEN}}"
-      HCLOUD_TOKEN: "{{.HCLOUD_TOKEN}}"
-
-      # TF_VAR DATA
-      TF_VAR_project_name: "{{.PROJECT_NAME}}"
-      TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
-      TF_VAR_cloud_env: "{{.CLOUD_ENV}}"
-      TF_VAR_token: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_TOKEN}}{{else}}{{.DOCLOUD_TOKEN}}{{end}}'
-      TF_VAR_ssh_key_name: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_SSH_KEY_NAME}}{{else}}{{.DIGITALOCEAN_SSH_KEY_NAME}}{{end}}'
-      TF_VAR_location: "{{.LOCATION}}"
-
-      # Server Types
-      TF_VAR_k3s_server_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_K3S_SERVER_TYPE}}{{else}}{{.DOCLOUD_K3S_SERVER_TYPE}}{{end}}'
-      TF_VAR_k3s_agent_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_K3S_AGENT_TYPE}}{{else}}{{.DOCLOUD_K3S_AGENT_TYPE}}{{end}}'
-      TF_VAR_nat_gateway_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_NAT_TYPE}}{{else}}{{.DOCLOUD_NAT_TYPE}}{{end}}'
-      TF_VAR_load_balancer_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_LB_TYPE}}{{else}}{{.DOCLOUD_LB_TYPE}}{{end}}'
-
-      # Tailscale
-      TF_VAR_tailscale_auth_nat_key: "{{.TAILSCALE_AUTH_NAT_KEY}}"
-      TF_VAR_tailscale_auth_k3s_server_key: "{{.TAILSCALE_AUTH_K3S_SERVER_KEY}}"
-      TF_VAR_tailscale_auth_k3s_agent_key: "{{.TAILSCALE_AUTH_K3S_AGENT_KEY}}"
-
-      # S3 Backup Bucket
-      TF_VAR_etcd_s3_access_key: "{{.ETCD_S3_ACCESS_KEY}}"
-      TF_VAR_etcd_s3_secret_key: "{{.ETCD_S3_SECRET_KEY}}"
-      TF_VAR_etcd_s3_bucket: "{{.PROJECT_NAME}}-etcd-{{.CLOUD_ENV}}"
-      TF_VAR_etcd_s3_region: "{{.S3_REGION}}"
-      TF_VAR_etcd_s3_endpoint: "https://storage.googleapis.com"
-
-      # Manifest Versions
-      TF_VAR_ccm_version: "{{.CCM_VERSION}}"
-      TF_VAR_csi_version: "{{.CSI_VERSION}}"
-      TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
-      TF_VAR_ingress_nginx_version: "{{.INGRESS_NGINX_VERSION}}"
-      TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
-      TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
-
-    cmds:
-      - echo "[TERRAFORM] {{.CMD}} -> {{.PROVIDER}} -> {{.LOCATION}} -> {{.CLOUD_ENV}}"
-      - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.PROVIDER}}"
-      - terraform {{.CMD}} {{.ARGS}}
-
-  hz:plan:
-    desc: "Plan Hetzner Ashburn"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "hetzner"
-          LOCATION: "ash"
-          CLOUD_ENV: "dev"
-          CMD: "plan"
-          ARGS: "-out=tfplan"
-
-  hz:apply:
-    desc: "Apply Hetzner Ashburn"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "hetzner"
-          LOCATION: "ash"
-          CLOUD_ENV: "dev"
-          CMD: "apply"
-          ARGS: "-auto-approve tfplan"
-
-  hz:destroy:
-    desc: "Destroy Hetzner Ashburn"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "hetzner"
-          LOCATION: "ash"
-          CLOUD_ENV: "dev"
-          CMD: "destroy"
-          ARGS: "-auto-approve"
-
-  hz:output:
-    desc: "Show Hetzner Outputs"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "hetzner"
-          LOCATION: "ash"
-          CLOUD_ENV: "dev"
-          CMD: "output"
-          ARGS: ""
-
-  do:plan:
-    desc: "Plan DigitalOcean NYC3 (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "digitalocean"
-          LOCATION: "nyc3"
-          CLOUD_ENV: "dev"
-          CMD: "plan"
-          ARGS: "-out=tfplan"
-
-  do:apply:
-    desc: "Apply DigitalOcean NYC3 (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "digitalocean"
-          LOCATION: "nyc3"
-          CLOUD_ENV: "dev"
-          CMD: "apply"
-          ARGS: "-auto-approve tfplan"
-
-  do:destroy:
-    desc: "Destroy DigitalOcean NYC3 (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "digitalocean"
-          LOCATION: "nyc3"
-          CLOUD_ENV: "dev"
-          CMD: "destroy"
-          ARGS: "-auto-approve"
-
-  do:output:
-    desc: "Show DigitalOcean Outputs"
-    cmds:
-      - task: _tf
-        vars:
-          PROVIDER: "digitalocean"
-          LOCATION: "nyc3"
-          CLOUD_ENV: "dev"
-          CMD: "output"
-          ARGS: ""
-
-  cluster:seal:
-    desc: "Create and seal a secret via SSH without local kubectl or kubeseal"
-    requires:
-      vars: [TENANT, NAME, KEY, VAL]
-    vars:
-      CP_HOSTNAME:
-        # We cd into the folder just for this variable evaluation so we don't change the task's working directory
-        sh: cd infrastructure/terraform/providers/hetzner && terraform output -raw control_plane_init_hostname
-    cmds:
-      - mkdir -p tenants/{{.TENANT}}
-      # Run kubectl & kubeseal on the remote server, but save the YAML output to your local machine
-      - >-
-        ssh root@{{.CP_HOSTNAME}} "
-        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml;
-
-        if ! command -v kubeseal >/dev/null 2>&1; then
-          echo '⬇️ Installing kubeseal on remote server...' >&2;
-          wget -qO kubeseal.tar.gz https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.1/kubeseal-0.27.1-linux-amd64.tar.gz;
-          tar -xzf kubeseal.tar.gz kubeseal;
-          mv kubeseal /usr/local/bin/kubeseal;
-          rm kubeseal.tar.gz;
-        fi;
-
-        kubectl create secret generic {{.NAME}} -n {{.TENANT}} --from-literal={{.KEY}}='{{.VAL}}' --dry-run=client -o yaml |
-        kubeseal --controller-name=sealed-secrets --controller-namespace=kube-system -o yaml
-        " > tenants/{{.TENANT}}/{{.NAME}}-secret.yaml
-      - echo "✅ Sealed secret saved locally to tenants/{{.TENANT}}/{{.NAME}}-secret.yaml"
-
   # ===========================================================================
   # DEVELOPMENT & CODE GENERATION
   # ===========================================================================
@@ -361,3 +131,66 @@ tasks:
       - dev:server
       - dev:web
 
+  # ===========================================================================
+  # RUST CRATES — LOCAL DEV (T480 / Linux)
+  # ===========================================================================
+  dev:metal-daemon:
+    desc: "Run metal-daemon locally (requires NATS running + Linux for TAP/FC)"
+    dir: metal-daemon
+    env:
+      NATS_URL: "nats://127.0.0.1:4222"
+      RUST_LOG: "metal_daemon=debug"
+    cmds:
+      - cargo run
+
+  dev:edge-proxy:
+    desc: "Run edge-proxy locally (requires Postgres running)"
+    dir: edge-proxy
+    env:
+      DATABASE_URL: "{{.PLATFORM_DATABASE_URL}}"
+      CLOUD_UPSTREAM: "127.0.0.1:8080"
+      BIND_ADDR: "0.0.0.0:8081"
+      RUST_LOG: "edge_proxy=debug"
+    cmds:
+      - cargo run
+
+  nats:up:
+    desc: "Start local NATS server with JetStream"
+    cmds:
+      - docker compose up -d nats
+
+  nats:down:
+    desc: "Stop local NATS server"
+    cmds:
+      - docker compose stop nats
+
+  # One-time setup for T480 / any Linux dev machine.
+  # Run once as root (or with sudo) before using dev:metal-daemon.
+  metal:setup:
+    desc: "T480 one-time setup: br0 bridge, /run/firecracker, Firecracker binary + kernel"
+    cmds:
+      - mkdir -p /run/firecracker
+      - ip link add br0 type bridge 2>/dev/null || true
+      - ip link set br0 up
+      - ip addr add 172.20.0.1/24 dev br0 2>/dev/null || true
+      - |
+        if [ ! -f /usr/local/bin/firecracker ]; then
+          echo "Downloading Firecracker v1.9.0..."
+          curl -L -o /tmp/firecracker.tgz \
+            https://github.com/firecracker-microvm/firecracker/releases/download/v1.9.0/firecracker-v1.9.0-x86_64.tgz
+          tar -xzf /tmp/firecracker.tgz -C /tmp/
+          mv /tmp/release-v1.9.0-x86_64/firecracker-v1.9.0-x86_64 /usr/local/bin/firecracker
+          chmod +x /usr/local/bin/firecracker
+          echo "✅ Firecracker installed"
+        else
+          echo "✅ Firecracker already installed"
+        fi
+      - |
+        if [ ! -f /opt/firecracker/vmlinux ]; then
+          echo "⚠️  No kernel at /opt/firecracker/vmlinux"
+          echo "   Download a guest kernel from Firecracker's getting-started guide:"
+          echo "   https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md"
+          echo "   Place the vmlinux file at: /opt/firecracker/vmlinux"
+        else
+          echo "✅ Guest kernel present"
+        fi

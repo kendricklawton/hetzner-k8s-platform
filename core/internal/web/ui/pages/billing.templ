@@ -3,7 +3,7 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ DashboardBillingPage(userName string, slug string) {
-	@components.DashboardLayout("Billing | Platform", userName, slug, "credit-card", "Billing") {
+	@components.DashboardLayout("Billing | Machine Name", userName, slug, "credit-card", "Billing") {
 		@DashboardBillingContent(slug)
 	}
 }
@@ -12,7 +12,7 @@ templ DashboardBillingContent(slug string) {
 	<div
 		data-page-title="Billing"
 		data-page-icon="credit-card"
-		class="p-6 lg:p-8"
+		class="p-4 flex flex-col gap-4"
 		x-data="{ activeSection: 'plan' }"
 		x-init="$nextTick(function() {
 			var root = document.getElementById('dashboard-content');

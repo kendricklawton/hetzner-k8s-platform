@@ -1,0 +1,72 @@
+version: "3"
+
+vars:
+  GCP_REGION: "us-south1" # GCP Dallas
+  HIVELOCITY_LOCATION: "DAL1" # Hivelocity Dallas
+
+tasks:
+  _tf_hub:
+    internal: true
+    dir: "{{.ROOT_DIR}}/infrastructure/terraform/providers/machine-hub"
+    vars:
+      TFSTATE_BUCKET: "{{.PROJECT_NAME}}-tfstate-hub"
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/{{.PROJECT_NAME}}-tfstate-gcp.json"
+      TF_VAR_hivelocity_api_key: "{{.HIVELOCITY_API_KEY}}"
+      TF_VAR_gcp_project_id: "{{.GCP_PROJECT_ID}}"
+      TF_VAR_gcp_region: "{{.GCP_REGION}}"
+      TF_VAR_tailscale_auth_key: "{{.TAILSCALE_AUTH_KEY}}"
+    cmds:
+      - echo "🚀 [TERRAFORM] {{.CMD}} -> Machine Hub (Dallas)"
+      - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix=terraform/state/hub"
+      - terraform {{.CMD}} {{.ARGS}}
+
+  plan:
+    desc: "Plan the Dual-Server Hub (Hivelocity + GCP in Dallas)"
+    cmds:
+      - task: _tf_hub
+        vars: { CMD: "plan", ARGS: "-out=tfplan" }
+
+  apply:
+    desc: "Apply and Provision Both Servers (Cloud-01 & Metal-01)"
+    cmds:
+      - task: _tf_hub
+        vars: { CMD: "apply", ARGS: "-auto-approve tfplan" }
+
+  destroy:
+    desc: "Destroy the entire Machine Hub"
+    cmds:
+      - task: _tf_hub
+        vars: { CMD: "destroy", ARGS: "-auto-approve" }
+
+  output:
+    desc: "Show IP Addresses for the Edge Proxy, Database, and Servers"
+    cmds:
+      - task: _tf_hub
+        vars: { CMD: "output", ARGS: "" }
+
+  cluster:seal:
+    desc: "Create and seal a secret via SSH on Cloud-01 without local kubectl"
+    requires:
+      vars: [TENANT, NAME, KEY, VAL]
+    vars:
+      CP_HOSTNAME:
+        sh: cd infrastructure/terraform/providers/machine-hub && terraform output -raw CLOUD_IP
+    cmds:
+      - mkdir -p tenants/{{.TENANT}}
+      - >-
+        ssh root@{{.CP_HOSTNAME}} "
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml;
+
+        if ! command -v kubeseal >/dev/null 2>&1; then
+          echo '⬇️ Installing kubeseal on Cloud-01...' >&2;
+          wget -qO kubeseal.tar.gz https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.1/kubeseal-0.27.1-linux-amd64.tar.gz;
+          tar -xzf kubeseal.tar.gz kubeseal;
+          mv kubeseal /usr/local/bin/kubeseal;
+          rm kubeseal.tar.gz;
+        fi;
+
+        kubectl create secret generic {{.NAME}} -n {{.TENANT}} --from-literal={{.KEY}}='{{.VAL}}' --dry-run=client -o yaml |
+        kubeseal --controller-name=sealed-secrets --controller-namespace=kube-system -o yaml
+        " > tenants/{{.TENANT}}/{{.NAME}}-secret.yaml
+      - echo "✅ Sealed secret saved locally to tenants/{{.TENANT}}/{{.NAME}}-secret.yaml"

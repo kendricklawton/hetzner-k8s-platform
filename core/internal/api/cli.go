@@ -12,15 +12,15 @@ import (
 	"github.com/kendricklawton/project-platform/core/internal/db"
 )
 
-// findProjectByName looks up a project by name across all teams the user belongs to.
+// findProjectByName looks up a project by name across all workspaces the user belongs to.
 func (h *handler) findProjectByName(ctx context.Context, userID uuid.UUID, name string) (*db.Project, error) {
-	teams, err := h.Store.GetTeamsForUser(ctx, userID)
+	workspaces, err := h.Store.GetWorkspacesForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	for _, team := range teams {
-		projects, err := h.Store.ListTeamProjects(ctx, db.ListTeamProjectsParams{
-			TeamID: team.ID,
+	for _, workspace := range workspaces {
+		projects, err := h.Store.ListWorkspaceProjects(ctx, db.ListWorkspaceProjectsParams{
+			WorkspaceID: workspace.ID,
 			UserID: userID,
 		})
 		if err != nil {
@@ -36,13 +36,13 @@ func (h *handler) findProjectByName(ctx context.Context, userID uuid.UUID, name 
 }
 
 // GET /v1/services
-// Returns all projects across the user's teams with their latest deployment status.
+// Returns all projects across the user's workspaces with their latest deployment status.
 func (h *handler) listServices(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
 
-	teams, err := h.Store.GetTeamsForUser(r.Context(), userID)
+	workspaces, err := h.Store.GetWorkspacesForUser(r.Context(), userID)
 	if err != nil {
-		log.Printf("listServices: GetTeamsForUser: %v", err)
+		log.Printf("listServices: GetWorkspacesForUser: %v", err)
 		http.Error(w, "Failed to fetch services", http.StatusInternalServerError)
 		return
 	}
@@ -56,9 +56,9 @@ func (h *handler) listServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	services := make([]serviceRow, 0)
-	for _, team := range teams {
-		projects, err := h.Store.ListTeamProjects(r.Context(), db.ListTeamProjectsParams{
-			TeamID: team.ID,
+	for _, workspace := range workspaces {
+		projects, err := h.Store.ListWorkspaceProjects(r.Context(), db.ListWorkspaceProjectsParams{
+			WorkspaceID: workspace.ID,
 			UserID: userID,
 		})
 		if err != nil {

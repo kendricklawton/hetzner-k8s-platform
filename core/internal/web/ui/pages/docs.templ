@@ -3,12 +3,13 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ DocsPage(slug, title, content string, userName string) {
-	@components.Layout(title+" | Platform", userName) {
+	@components.Layout(title+" | Machine Name", userName) {
 		@DocsContent(slug, title, content)
 	}
 }
 
 templ DocsContent(slug, title, content string) {
+	<title>{ title } | Machine Name</title>
 	<div class="flex gap-0 -mx-4 sm:-mx-6 -mt-12">
 		// Sidebar
 		<aside class="hidden md:flex flex-col w-56 shrink-0 border-r border-zinc-200 dark:border-atom-border pt-12">

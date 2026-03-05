@@ -16,12 +16,12 @@ type Querier interface {
 	// ============================================================================
 	AddDomain(ctx context.Context, arg AddDomainParams) (Domain, error)
 	// ============================================================================
-	// TEAM MEMBERS
+	// WORKSPACE MEMBERS
 	// ============================================================================
-	AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (TeamMember, error)
+	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (Deployment, error)
 	CountQueuedDeployments(ctx context.Context) (int64, error)
-	CountTeamQueuedDeployments(ctx context.Context, teamID uuid.UUID) (int64, error)
+	CountWorkspaceQueuedDeployments(ctx context.Context, workspaceID uuid.UUID) (int64, error)
 	// ============================================================================
 	// AUDIT LOG
 	// ============================================================================
@@ -35,12 +35,6 @@ type Querier interface {
 	// ============================================================================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	// ============================================================================
-	// TEAMS
-	// ============================================================================
-	// Atomic CTE: Creates a team and immediately assigns the creator as the owner.
-	// Bypasses the chicken-and-egg RBAC problem natively in Postgres.
-	CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error)
-	// ============================================================================
 	// QUERIES: sqlc query definitions
 	// Naming: sqlc conventions (:one, :many, :exec, :execrows, :copyfrom)
 	// Auth pattern: WHERE EXISTS subquery for RBAC inline with mutations
@@ -53,9 +47,15 @@ type Querier interface {
 	// WEBHOOKS
 	// ============================================================================
 	CreateWebhook(ctx context.Context, arg CreateWebhookParams) (Webhook, error)
+	// ============================================================================
+	// WORKSPACES
+	// ============================================================================
+	// Atomic CTE: Creates a workspace and immediately assigns the creator as the owner.
+	// Bypasses the chicken-and-egg RBAC problem natively in Postgres.
+	CreateWorkspaceWithOwner(ctx context.Context, arg CreateWorkspaceWithOwnerParams) (CreateWorkspaceWithOwnerRow, error)
 	DeleteDomain(ctx context.Context, arg DeleteDomainParams) (int64, error)
 	DeleteEnvVar(ctx context.Context, arg DeleteEnvVarParams) (int64, error)
-	DeleteOrphanedTeams(ctx context.Context, userID uuid.UUID) error
+	DeleteOrphanedWorkspaces(ctx context.Context, userID uuid.UUID) error
 	DeleteProject(ctx context.Context, arg DeleteProjectParams) (int64, error)
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWebhook(ctx context.Context, arg DeleteWebhookParams) (int64, error)
@@ -67,15 +67,15 @@ type Querier interface {
 	GetLatestDeployment(ctx context.Context, arg GetLatestDeploymentParams) (Deployment, error)
 	GetProject(ctx context.Context, arg GetProjectParams) (Project, error)
 	GetStaleBuilds(ctx context.Context) ([]Deployment, error)
-	GetTeam(ctx context.Context, id uuid.UUID) (Team, error)
-	GetTeamBySlug(ctx context.Context, slug string) (Team, error)
-	GetTeamMember(ctx context.Context, arg GetTeamMemberParams) (GetTeamMemberRow, error)
-	GetTeamUsageDetail(ctx context.Context, arg GetTeamUsageDetailParams) ([]UsageRecord, error)
-	GetTeamUsageSummary(ctx context.Context, arg GetTeamUsageSummaryParams) ([]GetTeamUsageSummaryRow, error)
-	GetTeamsForUser(ctx context.Context, userID uuid.UUID) ([]GetTeamsForUserRow, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetWebhookByProviderInstall(ctx context.Context, arg GetWebhookByProviderInstallParams) (GetWebhookByProviderInstallRow, error)
+	GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error)
+	GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error)
+	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (GetWorkspaceMemberRow, error)
+	GetWorkspaceUsageDetail(ctx context.Context, arg GetWorkspaceUsageDetailParams) ([]UsageRecord, error)
+	GetWorkspaceUsageSummary(ctx context.Context, arg GetWorkspaceUsageSummaryParams) ([]GetWorkspaceUsageSummaryRow, error)
+	GetWorkspacesForUser(ctx context.Context, userID uuid.UUID) ([]GetWorkspacesForUserRow, error)
 	InsertBuildLogBatch(ctx context.Context, arg []InsertBuildLogBatchParams) (int64, error)
 	// ============================================================================
 	// BUILD LOG LINES
@@ -86,28 +86,28 @@ type Querier interface {
 	ListProjectDomains(ctx context.Context, arg ListProjectDomainsParams) ([]Domain, error)
 	ListProjectWebhooks(ctx context.Context, arg ListProjectWebhooksParams) ([]Webhook, error)
 	ListResourceAuditLog(ctx context.Context, arg ListResourceAuditLogParams) ([]ListResourceAuditLogRow, error)
-	ListTeamAuditLog(ctx context.Context, arg ListTeamAuditLogParams) ([]ListTeamAuditLogRow, error)
-	ListTeamMembers(ctx context.Context, teamID uuid.UUID) ([]ListTeamMembersRow, error)
-	ListTeamProjects(ctx context.Context, arg ListTeamProjectsParams) ([]Project, error)
+	ListWorkspaceAuditLog(ctx context.Context, arg ListWorkspaceAuditLogParams) ([]ListWorkspaceAuditLogRow, error)
+	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
+	ListWorkspaceProjects(ctx context.Context, arg ListWorkspaceProjectsParams) ([]Project, error)
 	// ============================================================================
 	// ONBOARDING
 	// ============================================================================
-	// Atomic: creates user + personal team + owner membership in one transaction
-	OnboardUserWithTeam(ctx context.Context, arg OnboardUserWithTeamParams) (uuid.UUID, error)
+	// Atomic: creates user + personal workspace + owner membership in one transaction
+	OnboardUserWithWorkspace(ctx context.Context, arg OnboardUserWithWorkspaceParams) (uuid.UUID, error)
 	// ============================================================================
 	// USAGE / BILLING
 	// ============================================================================
 	RecordUsage(ctx context.Context, arg RecordUsageParams) error
-	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (int64, error)
+	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error)
 	SoftDeleteDeployment(ctx context.Context, arg SoftDeleteDeploymentParams) (int64, error)
 	UpdateDeploymentStatus(ctx context.Context, arg UpdateDeploymentStatusParams) (Deployment, error)
 	UpdateDomainTLSStatus(ctx context.Context, arg UpdateDomainTLSStatusParams) (Domain, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
-	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error)
-	UpdateTeamMemberRole(ctx context.Context, arg UpdateTeamMemberRoleParams) (int64, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateUserStripeCustomerID(ctx context.Context, arg UpdateUserStripeCustomerIDParams) (User, error)
 	UpdateUserTier(ctx context.Context, arg UpdateUserTierParams) (User, error)
+	UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error)
+	UpdateWorkspaceMemberRole(ctx context.Context, arg UpdateWorkspaceMemberRoleParams) (int64, error)
 	// ============================================================================
 	// SECRETS MANAGEMENT
 	// ============================================================================

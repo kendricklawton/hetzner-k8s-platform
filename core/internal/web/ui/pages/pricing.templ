@@ -3,13 +3,13 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ PricingPage(userName string) {
-	@components.Layout("Pricing | Platform", userName) {
+	@components.Layout("Pricing | Machine Name", userName) {
 		@PricingContent(userName)
 	}
 }
 
 templ PricingContent(userName string) {
-	<title>Pricing | Platform</title>
+	<title>Pricing | Machine Name</title>
 	<div class="flex flex-col gap-24 py-12 relative">
 		// ── HERO ──────────────────────────────────────────────────────────────
 		<section class="relative z-10 flex flex-col items-center text-center gap-6">
@@ -54,7 +54,7 @@ templ PricingContent(userName string) {
 					@pricingFeatureRow("check", "Community support", true)
 					@pricingFeatureRow("check", "10 GB transfer / month", true)
 					@pricingFeatureRow("check", "200 build minutes / month", true)
-					@pricingFeatureRow("x", "Team collaboration", false)
+					@pricingFeatureRow("x", "Workspace collaboration", false)
 					@pricingFeatureRow("x", "Multiple projects", false)
 					@pricingFeatureRow("x", "Preview environments", false)
 					@pricingFeatureRow("x", "Audit log", false)
@@ -124,7 +124,7 @@ templ PricingContent(userName string) {
 			<div class="flex flex-col gap-px bg-zinc-200 dark:bg-atom-border border border-zinc-200 dark:border-atom-border">
 				@pricingFaqRow("What languages are supported?", "Go and Rust today. Zig is on the roadmap. The platform targets compiled, static binary workloads only — no interpreted runtimes or managed languages.")
 				@pricingFaqRow("Why only static binaries?", "Static binaries have zero runtime dependencies, sub-millisecond cold starts, and run in scratch containers with a minimal attack surface. No interpreter overhead, no JVM, no GC pauses on your critical path.")
-				@pricingFaqRow("How do teams work?", "Team features are available on Pro. Pro accounts support unlimited users — owners and members are billed at $20/user/month, viewer seats are always free. Roles: owner, member, viewer. The free tier is a solo workspace — one account, one project.")
+				@pricingFaqRow("How do workspaces work?", "Workspace features are available on Pro. Pro accounts support unlimited users — owners and members are billed at $20/user/month, viewer seats are always free. Roles: owner, member, viewer. The free tier is a solo workspace — one account, one project.")
 				@pricingFaqRow("What are the resource limits?", "Limits are account-wide totals, not per service. Static Go and Rust binaries typically idle well under 20 MB — the free tier is sized with that reality in mind, not inflated to look impressive. Pro gives significantly more headroom to distribute across your services as needed.")
 				@pricingFaqRow("How is Pro pricing determined?", "Pro pricing reflects actual infrastructure cost plus a margin. Pricing may change over time — we'll give notice before any changes take effect.")
 				@pricingFaqRow("What happens when I approach the free tier limits?", "You'll get a notification before anything is throttled. You'll have time to upgrade to Pro or reduce usage before any limits kick in.")

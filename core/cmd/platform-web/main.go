@@ -26,7 +26,7 @@ func main() {
 	// 2. Initialize ConnectRPC clients pointing to the Core API
 	apiClient := http.DefaultClient
 	userClient := platformv1connect.NewUserServiceClient(apiClient, cfg.APIURL)
-	teamClient := platformv1connect.NewTeamServiceClient(apiClient, cfg.APIURL)
+	workspaceClient := platformv1connect.NewWorkspaceServiceClient(apiClient, cfg.APIURL)
 
 	// 3. Mount the Web BFF Handler — no direct DB access, all data via Core API
 	webHandler := web.NewHandler(
@@ -38,7 +38,7 @@ func main() {
 		cfg.WorkOSRedirectURI,
 		cfg.WorkOSCLIRedirectURI,
 		userClient,
-		teamClient,
+		workspaceClient,
 	)
 
 	// 4. Build the http.Server so we can shut it down gracefully

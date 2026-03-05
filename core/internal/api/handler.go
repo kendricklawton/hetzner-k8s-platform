@@ -8,7 +8,7 @@ import (
 
 // Services holds pointers to your actual Business Logic (The internal services).
 type Services struct {
-	Team *service.TeamServer
+	Workspace *service.WorkspaceServer
 	User *service.UserServer
 	Auth *service.AuthService
 }

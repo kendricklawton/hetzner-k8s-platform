@@ -16,19 +16,18 @@ var (
 )
 
 // ── OVERVIEW ─────────────────────────────────────────────────────────────────
-
 templ DashboardPage(userName string, slug string) {
-	@components.DashboardLayout("Projects | Platform", userName, slug, "layout-grid", "Projects") {
+	@components.DashboardLayout("Projects | Machine Name", userName, slug, "layout-grid", "Projects") {
 		@DashboardContent(userName, slug)
 	}
 }
 
 templ DashboardContent(userName string, slug string) {
-	<div data-page-title="Projects" data-page-icon="layout-grid" class="p-6 lg:p-8 flex flex-col gap-8">
+	<div data-page-title="Projects" data-page-icon="layout-grid" class="p-4 flex flex-col gap-4">
 		// Action bar
 		<div class="flex justify-end">
 			<a
-				href={ templ.SafeURL("/"+slug+"/new") }
+				href={ templ.SafeURL("/" + slug + "/new") }
 				class="flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-white text-[10px] font-bold text-white dark:text-zinc-900 uppercase tracking-widest hover:opacity-80 transition-opacity"
 			>
 				<i data-lucide="plus" width="12" height="12"></i>
@@ -39,7 +38,7 @@ templ DashboardContent(userName string, slug string) {
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 			// Existing project card (mock)
 			<a
-				href={ templ.SafeURL("/"+slug+"/projects/default") }
+				href={ templ.SafeURL("/" + slug + "/projects/default") }
 				class="border border-zinc-200 dark:border-atom-border p-5 flex flex-col gap-4 hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
 			>
 				<div class="flex items-center gap-2">
@@ -50,7 +49,7 @@ templ DashboardContent(userName string, slug string) {
 			</a>
 			// Create new project
 			<a
-				href={ templ.SafeURL("/"+slug+"/new") }
+				href={ templ.SafeURL("/" + slug + "/new") }
 				class="border border-dashed border-zinc-300 dark:border-atom-border p-5 flex items-center justify-center gap-2 text-zinc-400 dark:text-atom-muted hover:text-zinc-600 dark:hover:text-atom-fg hover:border-zinc-400 dark:hover:border-atom-fg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors"
 			>
 				<i data-lucide="plus" width="14" height="14"></i>
@@ -61,77 +60,71 @@ templ DashboardContent(userName string, slug string) {
 }
 
 // ── BLUEPRINTS ────────────────────────────────────────────────────────────────
-
 templ DashboardBlueprintsPage(userName string, slug string) {
-	@components.DashboardLayout("Blueprints | Platform", userName, slug, "file-code-2", "Blueprints") {
+	@components.DashboardLayout("Blueprints | Machine Name", userName, slug, "file-code-2", "Blueprints") {
 		@DashboardBlueprintsContent()
 	}
 }
 
 templ DashboardBlueprintsContent() {
-	@dashPlaceholderPage("file-code-2", "Blueprints", "Reusable service blueprints will appear here.")
+	@dashPlaceholderPage("file-code-2", "Blueprints", "Reusable service blueprints will appear here.", "New Blueprint")
 }
 
 // ── ENVIRONMENT GROUPS ────────────────────────────────────────────────────────
-
 templ DashboardEnvGroupsPage(userName string, slug string) {
-	@components.DashboardLayout("Environment Groups | Platform", userName, slug, "layers-2", "Environment Groups") {
+	@components.DashboardLayout("Environment Groups | Machine Name", userName, slug, "layers-2", "Environment Groups") {
 		@DashboardEnvGroupsContent()
 	}
 }
 
 templ DashboardEnvGroupsContent() {
-	@dashPlaceholderPage("layers-2", "Environment Groups", "Shared environment variable groups will appear here.")
+	@dashPlaceholderPage("layers-2", "Environment Groups", "Shared environment variable groups will appear here.", "New Group")
 }
 
 // ── OBSERVABILITY ─────────────────────────────────────────────────────────────
-
 templ DashboardObservabilityPage(userName string, slug string) {
-	@components.DashboardLayout("Observability | Platform", userName, slug, "activity", "Observability") {
+	@components.DashboardLayout("Observability | Machine Name", userName, slug, "activity", "Observability") {
 		@DashboardObservabilityContent()
 	}
 }
 
 templ DashboardObservabilityContent() {
-	@dashPlaceholderPage("activity", "Observability", "Metrics, traces, and runtime telemetry will appear here.")
+	@dashPlaceholderPage("activity", "Observability", "Metrics, traces, and runtime telemetry will appear here.", "Configure")
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
-
 templ DashboardNotificationsPage(userName string, slug string) {
-	@components.DashboardLayout("Notifications | Platform", userName, slug, "bell", "Notifications") {
+	@components.DashboardLayout("Notifications | Machine Name", userName, slug, "bell", "Notifications") {
 		@DashboardNotificationsContent()
 	}
 }
 
 templ DashboardNotificationsContent() {
-	@dashPlaceholderPage("bell", "Notifications", "Deployment alerts and team notifications will appear here.")
+	@dashPlaceholderPage("bell", "Notifications", "Deployment alerts and workspace notifications will appear here.", "New Rule")
 }
 
 // ── PRIVATE LINKS ─────────────────────────────────────────────────────────────
-
 templ DashboardPrivateLinksPage(userName string, slug string) {
-	@components.DashboardLayout("Private Links | Platform", userName, slug, "lock", "Private Links") {
+	@components.DashboardLayout("Private Links | Machine Name", userName, slug, "lock", "Private Links") {
 		@DashboardPrivateLinksContent()
 	}
 }
 
 templ DashboardPrivateLinksContent() {
-	@dashPlaceholderPage("lock", "Private Links", "Internal service-to-service networking will appear here.")
+	@dashPlaceholderPage("lock", "Private Links", "Internal service-to-service networking will appear here.", "New Link")
 }
 
 // ── SERVICES ─────────────────────────────────────────────────────────────────
-
 templ DashboardServicesPage(userName string, slug string) {
-	@components.DashboardLayout("Services | Platform", userName, slug, "box", "Services") {
+	@components.DashboardLayout("Services | Machine Name", userName, slug, "box", "Services") {
 		@DashboardServicesContent()
 	}
 }
 
 templ DashboardServicesContent() {
 	<div data-page-title="Services" data-page-icon="box" class="flex flex-col h-full">
-		<div class="px-6 lg:px-8 pt-6 lg:pt-8 pb-4 shrink-0"></div>
-		<div class="px-6 lg:px-8 pb-6 lg:pb-8 flex flex-col min-h-0 flex-1">
+		<div class="px-4 pt-4 pb-4 shrink-0"></div>
+		<div class="px-4 pb-4 flex flex-col min-h-0 flex-1">
 			<div class="border border-zinc-200 dark:border-atom-border flex flex-col min-h-0 flex-1">
 				<div class="flex items-center px-5 py-2 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface shrink-0">
 					<span class="w-2 shrink-0"></span>
@@ -156,9 +149,8 @@ templ DashboardServicesContent() {
 }
 
 // ── DEPLOYMENTS ──────────────────────────────────────────────────────────────
-
 templ DashboardDeploymentsPage(userName string, slug string) {
-	@components.DashboardLayout("Deployments | Platform", userName, slug, "rocket", "Deployments") {
+	@components.DashboardLayout("Deployments | Machine Name", userName, slug, "rocket", "Deployments") {
 		@DashboardDeploymentsContent()
 	}
 }
@@ -166,13 +158,13 @@ templ DashboardDeploymentsPage(userName string, slug string) {
 templ DashboardDeploymentsContent() {
 	<div data-page-title="Deployments" data-page-icon="rocket" class="flex flex-col h-full">
 		// Actions bar
-		<div class="px-6 lg:px-8 pt-6 lg:pt-8 pb-4 flex items-center justify-end shrink-0">
+		<div class="px-4 pt-4 pb-4 flex items-center justify-end shrink-0">
 			<button class="flex items-center justify-center w-8 h-8 text-zinc-400 dark:text-atom-muted hover:text-zinc-900 dark:hover:text-atom-fg hover:bg-zinc-100 dark:hover:bg-atom-surface transition-colors">
 				<i data-lucide="more-horizontal" width="16" height="16"></i>
 			</button>
 		</div>
 		// Filters
-		<div class="px-6 lg:px-8 pb-4 flex flex-wrap items-center gap-3 shrink-0">
+		<div class="px-4 pb-4 flex flex-wrap items-center gap-3 shrink-0">
 			// Date range
 			<button class="flex items-center gap-2 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg hover:bg-zinc-50 dark:hover:bg-atom-surface transition-colors text-[11px] font-mono text-zinc-600 dark:text-atom-fg">
 				<i data-lucide="calendar" width="12" height="12" class="text-zinc-400 dark:text-atom-muted"></i>
@@ -207,7 +199,7 @@ templ DashboardDeploymentsContent() {
 			</button>
 		</div>
 		// Table
-		<div class="px-6 lg:px-8 pb-6 lg:pb-8 flex flex-col min-h-0 flex-1">
+		<div class="px-4 pb-4 flex flex-col min-h-0 flex-1">
 			<div class="border border-zinc-200 dark:border-atom-border flex flex-col min-h-0 flex-1">
 				<div class="flex items-center px-5 py-2 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface shrink-0">
 					<span class="w-2 shrink-0"></span>
@@ -231,64 +223,59 @@ templ DashboardDeploymentsContent() {
 }
 
 // ── LOGS ─────────────────────────────────────────────────────────────────────
-
 templ DashboardLogsPage(userName string, slug string) {
-	@components.DashboardLayout("Logs | Platform", userName, slug, "scroll-text", "Logs") {
+	@components.DashboardLayout("Logs | Machine Name", userName, slug, "scroll-text", "Logs") {
 		@DashboardLogsContent()
 	}
 }
 
 templ DashboardLogsContent() {
-	@dashPlaceholderPage("scroll-text", "Logs", "Runtime and build logs will stream here.")
+	@dashPlaceholderPage("scroll-text", "Logs", "Runtime and build logs will stream here.", "Export Logs")
 }
 
 // ── SECRETS ──────────────────────────────────────────────────────────────────
-
 templ DashboardSecretsPage(userName string, slug string) {
-	@components.DashboardLayout("Secrets | Platform", userName, slug, "key", "Secrets") {
+	@components.DashboardLayout("Secrets | Machine Name", userName, slug, "key", "Secrets") {
 		@DashboardSecretsContent()
 	}
 }
 
 templ DashboardSecretsContent() {
-	@dashPlaceholderPage("key", "Secrets", "Encrypted environment variables and secrets will appear here.")
+	@dashPlaceholderPage("key", "Secrets", "Encrypted environment variables and secrets will appear here.", "New Secret")
 }
 
 // ── DOMAINS ──────────────────────────────────────────────────────────────────
-
 templ DashboardDomainsPage(userName string, slug string) {
-	@components.DashboardLayout("Domains | Platform", userName, slug, "globe", "Domains") {
+	@components.DashboardLayout("Domains | Machine Name", userName, slug, "globe", "Domains") {
 		@DashboardDomainsContent()
 	}
 }
 
 templ DashboardDomainsContent() {
-	@dashPlaceholderPage("globe", "Domains", "Custom domains and TLS certificates will appear here.")
+	@dashPlaceholderPage("globe", "Domains", "Custom domains and TLS certificates will appear here.", "Add Domain")
 }
 
 // ── WEBHOOKS ─────────────────────────────────────────────────────────────────
-
 templ DashboardWebhooksPage(userName string, slug string) {
-	@components.DashboardLayout("Webhooks | Platform", userName, slug, "webhook", "Webhooks") {
+	@components.DashboardLayout("Webhooks | Machine Name", userName, slug, "webhook", "Webhooks") {
 		@DashboardWebhooksContent()
 	}
 }
 
 templ DashboardWebhooksContent() {
-	@dashPlaceholderPage("webhook", "Webhooks", "Webhook endpoints and delivery history will appear here.")
+	@dashPlaceholderPage("webhook", "Webhooks", "Webhook endpoints and delivery history will appear here.", "Add Webhook")
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
-
 templ DashboardSettingsPage(userName string, slug string) {
-	@components.DashboardLayout("Settings | Platform", userName, slug, "settings", "Settings") {
+	@components.DashboardLayout("Settings | Machine Name", userName, slug, "settings", "Settings") {
 		@DashboardSettingsContent()
 	}
 }
 
 templ DashboardSettingsContent() {
-	<div data-page-title="Settings" data-page-icon="settings" class="p-6 lg:p-8 flex flex-col gap-6">
-		// Team identity
+	<div data-page-title="Settings" data-page-icon="settings" class="p-4 flex flex-col gap-4">
+		// Workspace identity
 		<div class="border border-zinc-200 dark:border-atom-border">
 			<div class="px-5 py-3 border-b border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">
 				<span class="text-[10px] font-bold text-zinc-400 dark:text-atom-muted uppercase tracking-widest">Identity</span>
@@ -296,12 +283,12 @@ templ DashboardSettingsContent() {
 			<div class="flex flex-col gap-0 divide-y divide-zinc-200 dark:divide-atom-border">
 				<div class="flex items-center justify-between px-5 py-4">
 					<div class="flex flex-col gap-0.5">
-						<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Team Name</span>
-						<span class="text-[11px] text-zinc-500 dark:text-atom-muted">Display name for this team.</span>
+						<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Workspace Name</span>
+						<span class="text-[11px] text-zinc-500 dark:text-atom-muted">Display name for this workspace.</span>
 					</div>
 					<input
 						type="text"
-						placeholder="My Team"
+						placeholder="My Workspace"
 						class="w-48 px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-white dark:bg-atom-bg text-xs font-mono text-zinc-900 dark:text-atom-fg placeholder-zinc-400 dark:placeholder-atom-muted outline-none focus:border-zinc-400 dark:focus:border-atom-fg"
 					/>
 				</div>
@@ -310,7 +297,7 @@ templ DashboardSettingsContent() {
 						<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Slug</span>
 						<span class="text-[11px] text-zinc-500 dark:text-atom-muted">Used in URLs. Cannot be changed.</span>
 					</div>
-					<span class="text-[11px] font-mono text-zinc-500 dark:text-atom-muted px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">team-slug</span>
+					<span class="text-[11px] font-mono text-zinc-500 dark:text-atom-muted px-3 py-1.5 border border-zinc-200 dark:border-atom-border bg-zinc-100 dark:bg-atom-surface">workspace-slug</span>
 				</div>
 			</div>
 		</div>
@@ -334,14 +321,14 @@ templ DashboardSettingsContent() {
 			</div>
 			<div class="flex items-center justify-between px-5 py-4">
 				<div class="flex flex-col gap-0.5">
-					<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Delete Team</span>
+					<span class="text-xs font-bold text-zinc-900 dark:text-atom-fg uppercase tracking-widest">Delete Workspace</span>
 					<span class="text-[11px] text-zinc-500 dark:text-atom-muted">Permanently deletes all projects, services, and deployments.</span>
 				</div>
 				<button
 					class="px-4 py-1.5 border border-red-300 dark:border-atom-red/50 text-[10px] font-bold text-red-600 dark:text-atom-red uppercase tracking-widest hover:bg-red-50 dark:hover:bg-atom-red/10 transition-colors"
 					disabled
 				>
-					Delete Team
+					Delete Workspace
 				</button>
 			</div>
 		</div>
@@ -349,9 +336,16 @@ templ DashboardSettingsContent() {
 }
 
 // ── SHARED COMPONENTS ────────────────────────────────────────────────────────
-
-templ dashPlaceholderPage(icon string, title string, desc string) {
-	<div data-page-title={ title } data-page-icon={ icon } class="p-6 lg:p-8 flex flex-col gap-6">
+templ dashPlaceholderPage(icon string, title string, desc string, actionLabel string) {
+	<div data-page-title={ title } data-page-icon={ icon } class="p-4 flex flex-col gap-4">
+		if actionLabel != "" {
+			<div class="flex justify-end">
+				<button class="flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-white text-[10px] font-bold text-white dark:text-zinc-900 uppercase tracking-widest hover:opacity-80 transition-opacity">
+					<i data-lucide="plus" width="12" height="12"></i>
+					{ actionLabel }
+				</button>
+			</div>
+		}
 		<div class="border border-zinc-200 dark:border-atom-border">
 			<div class="flex flex-col items-center justify-center py-24 gap-4">
 				<i data-lucide={ icon } width="20" height="20" class="text-zinc-300 dark:text-atom-border"></i>

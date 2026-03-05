@@ -26,13 +26,13 @@ UPDATE users SET stripe_customer_id = $2 WHERE id = $1 RETURNING *;
 -- name: UpdateUserProfile :one
 UPDATE users SET name = $2, avatar_url = $3 WHERE id = $1 RETURNING *;
 
--- name: DeleteOrphanedTeams :exec
-UPDATE teams SET deleted_at = NOW() WHERE id IN (
-    SELECT tm.team_id FROM team_members tm
-    WHERE tm.user_id = $1 AND tm.role = 'owner'
+-- name: DeleteOrphanedWorkspaces :exec
+UPDATE workspaces SET deleted_at = NOW() WHERE id IN (
+    SELECT wm.workspace_id FROM workspace_members wm
+    WHERE wm.user_id = $1 AND wm.role = 'owner'
     AND NOT EXISTS (
-        SELECT 1 FROM team_members tm2
-        WHERE tm2.team_id = tm.team_id AND tm2.user_id != $1
+        SELECT 1 FROM workspace_members wm2
+        WHERE wm2.workspace_id = wm.workspace_id AND wm2.user_id != $1
     )
 ) AND deleted_at IS NULL;
 
@@ -40,39 +40,39 @@ UPDATE teams SET deleted_at = NOW() WHERE id IN (
 UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL;
 
 -- ============================================================================
--- TEAMS
+-- WORKSPACES
 -- ============================================================================
 
--- name: CreateTeamWithOwner :one
--- Atomic CTE: Creates a team and immediately assigns the creator as the owner.
+-- name: CreateWorkspaceWithOwner :one
+-- Atomic CTE: Creates a workspace and immediately assigns the creator as the owner.
 -- Bypasses the chicken-and-egg RBAC problem natively in Postgres.
-WITH new_team AS (
-    INSERT INTO teams (id, name, slug) VALUES ($1, $2, $3) RETURNING *
+WITH new_workspace AS (
+    INSERT INTO workspaces (id, name, slug) VALUES ($1, $2, $3) RETURNING *
 ),
 new_member AS (
-    INSERT INTO team_members (team_id, user_id, role)
-    SELECT id, $4, 'owner' FROM new_team
+    INSERT INTO workspace_members (workspace_id, user_id, role)
+    SELECT id, $4, 'owner' FROM new_workspace
 )
-SELECT * FROM new_team;
+SELECT * FROM new_workspace;
 
--- name: GetTeam :one
-SELECT * FROM teams WHERE id = $1;
+-- name: GetWorkspace :one
+SELECT * FROM workspaces WHERE id = $1;
 
--- name: GetTeamBySlug :one
-SELECT * FROM teams WHERE slug = $1 AND deleted_at IS NULL;
+-- name: GetWorkspaceBySlug :one
+SELECT * FROM workspaces WHERE slug = $1 AND deleted_at IS NULL;
 
--- name: GetTeamsForUser :many
-SELECT t.*, tm.role FROM teams t
-JOIN team_members tm ON t.id = tm.team_id
-WHERE tm.user_id = $1 AND t.deleted_at IS NULL
-ORDER BY t.name;
+-- name: GetWorkspacesForUser :many
+SELECT w.*, wm.role FROM workspaces w
+JOIN workspace_members wm ON w.id = wm.workspace_id
+WHERE wm.user_id = $1 AND w.deleted_at IS NULL
+ORDER BY w.name;
 
--- name: UpdateTeam :one
-UPDATE teams SET name = $2, slug = $3
-WHERE teams.id = $1
+-- name: UpdateWorkspace :one
+UPDATE workspaces SET name = $2, slug = $3
+WHERE workspaces.id = $1
 AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
 )
 RETURNING *;
 
@@ -80,96 +80,96 @@ RETURNING *;
 -- ONBOARDING
 -- ============================================================================
 
--- name: OnboardUserWithTeam :one
--- Atomic: creates user + personal team + owner membership in one transaction
+-- name: OnboardUserWithWorkspace :one
+-- Atomic: creates user + personal workspace + owner membership in one transaction
 WITH new_user AS (
     INSERT INTO users (id, email, name) VALUES ($1, $2, $3) RETURNING id
 ),
-new_team AS (
-    INSERT INTO teams (id, name, slug) VALUES ($4, $5, $6) RETURNING id
+new_workspace AS (
+    INSERT INTO workspaces (id, name, slug) VALUES ($4, $5, $6) RETURNING id
 )
-INSERT INTO team_members (team_id, user_id, role)
-SELECT new_team.id, new_user.id, 'owner'
-FROM new_user, new_team
-RETURNING team_members.team_id;
+INSERT INTO workspace_members (workspace_id, user_id, role)
+SELECT new_workspace.id, new_user.id, 'owner'
+FROM new_user, new_workspace
+RETURNING workspace_members.workspace_id;
 
 -- ============================================================================
--- TEAM MEMBERS
+-- WORKSPACE MEMBERS
 -- ============================================================================
 
--- name: AddTeamMember :one
-INSERT INTO team_members (team_id, user_id, role)
+-- name: AddWorkspaceMember :one
+INSERT INTO workspace_members (workspace_id, user_id, role)
 SELECT $1, $2, $3
 WHERE EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
 )
 RETURNING *;
 
--- name: UpdateTeamMemberRole :execrows
-UPDATE team_members SET role = $3
-WHERE team_members.team_id = $1 AND team_members.user_id = $2
+-- name: UpdateWorkspaceMemberRole :execrows
+UPDATE workspace_members SET role = $3
+WHERE workspace_members.workspace_id = $1 AND workspace_members.user_id = $2
 AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $4 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $4 AND wm.role = 'owner'
 )
 AND NOT (
     $3 != 'owner' AND (
-        SELECT COUNT(*) FROM team_members tm2
-        WHERE tm2.team_id = $1 AND tm2.role = 'owner'
-    ) <= 1 AND team_members.user_id = (
-        SELECT tm3.user_id FROM team_members tm3
-        WHERE tm3.team_id = $1 AND tm3.role = 'owner' LIMIT 1
+        SELECT COUNT(*) FROM workspace_members wm2
+        WHERE wm2.workspace_id = $1 AND wm2.role = 'owner'
+    ) <= 1 AND workspace_members.user_id = (
+        SELECT wm3.user_id FROM workspace_members wm3
+        WHERE wm3.workspace_id = $1 AND wm3.role = 'owner' LIMIT 1
     )
 );
 
--- name: RemoveTeamMember :execrows
-DELETE FROM team_members
-WHERE team_members.team_id = $1 AND team_members.user_id = $2
+-- name: RemoveWorkspaceMember :execrows
+DELETE FROM workspace_members
+WHERE workspace_members.workspace_id = $1 AND workspace_members.user_id = $2
 AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $1 AND tm.user_id = $3 AND tm.role = 'owner'
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $1 AND wm.user_id = $3 AND wm.role = 'owner'
 )
 AND NOT (
-    team_members.role = 'owner' AND (
-        SELECT COUNT(*) FROM team_members tm2
-        WHERE tm2.team_id = $1 AND tm2.role = 'owner'
+    workspace_members.role = 'owner' AND (
+        SELECT COUNT(*) FROM workspace_members wm2
+        WHERE wm2.workspace_id = $1 AND wm2.role = 'owner'
     ) <= 1
 );
 
--- name: ListTeamMembers :many
-SELECT tm.*, u.email, u.name, u.avatar_url FROM team_members tm
-JOIN users u ON tm.user_id = u.id
-WHERE tm.team_id = $1
-ORDER BY tm.role, u.name;
+-- name: ListWorkspaceMembers :many
+SELECT wm.*, u.email, u.name, u.avatar_url FROM workspace_members wm
+JOIN users u ON wm.user_id = u.id
+WHERE wm.workspace_id = $1
+ORDER BY wm.role, u.name;
 
--- name: GetTeamMember :one
-SELECT tm.*, u.email, u.name FROM team_members tm
-JOIN users u ON tm.user_id = u.id
-WHERE tm.team_id = $1 AND tm.user_id = $2;
+-- name: GetWorkspaceMember :one
+SELECT wm.*, u.email, u.name FROM workspace_members wm
+JOIN users u ON wm.user_id = u.id
+WHERE wm.workspace_id = $1 AND wm.user_id = $2;
 
 -- ============================================================================
 -- PROJECTS
 -- ============================================================================
 
 -- name: CreateProject :one
-INSERT INTO projects (id, team_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory)
+INSERT INTO projects (id, workspace_id, name, framework, repo_url, default_branch, root_directory, build_command, install_command, output_directory)
 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 WHERE EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.team_id = $2 AND tm.user_id = $11 AND tm.role IN ('owner', 'member')
+    SELECT 1 FROM workspace_members wm
+    WHERE wm.workspace_id = $2 AND wm.user_id = $11 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
 -- name: GetProject :one
 SELECT p.* FROM projects p
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE p.id = $1 AND tm.user_id = $2;
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE p.id = $1 AND wm.user_id = $2;
 
--- name: ListTeamProjects :many
+-- name: ListWorkspaceProjects :many
 SELECT p.* FROM projects p
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE p.team_id = $1 AND tm.user_id = $2
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE p.workspace_id = $1 AND wm.user_id = $2
 ORDER BY p.created_at DESC;
 
 -- name: UpdateProject :one
@@ -185,8 +185,8 @@ UPDATE projects SET
 WHERE projects.id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = projects.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = projects.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
@@ -195,8 +195,8 @@ DELETE FROM projects
 WHERE projects.id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = projects.id AND tm.user_id = $2 AND tm.role = 'owner'
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = projects.id AND wm.user_id = $2 AND wm.role = 'owner'
 );
 
 -- ============================================================================
@@ -208,16 +208,16 @@ INSERT INTO domains (id, project_id, domain)
 SELECT $1, $2, $3
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $4 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $4 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
 -- name: ListProjectDomains :many
 SELECT d.* FROM domains d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.project_id = $1 AND tm.user_id = $2
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.project_id = $1 AND wm.user_id = $2
 ORDER BY d.created_at DESC;
 
 -- name: VerifyDomain :one
@@ -234,12 +234,12 @@ WHERE domains.id = $1
 AND EXISTS (
     SELECT 1 FROM domains d
     JOIN projects p ON d.project_id = p.id
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE d.id = domains.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE d.id = domains.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 );
 
 -- name: GetDomainByName :one
-SELECT d.*, p.id AS project_id, p.team_id FROM domains d
+SELECT d.*, p.id AS project_id, p.workspace_id FROM domains d
 JOIN projects p ON d.project_id = p.id
 WHERE d.domain = $1 AND d.is_verified = true AND d.tls_status = 'active';
 
@@ -252,8 +252,8 @@ INSERT INTO project_env_vars (id, project_id, environment, key_name, encrypted_v
 SELECT $1, $2, $3, $4, $5, $6, $7, $8
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $9 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $9 AND wm.role IN ('owner', 'member')
 )
 ON CONFLICT (project_id, environment, key_name)
 DO UPDATE SET
@@ -268,8 +268,8 @@ DELETE FROM project_env_vars
 WHERE project_id = $1 AND environment = $2 AND key_name = $3
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $1 AND tm.user_id = $4 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $1 AND wm.user_id = $4 AND wm.role IN ('owner', 'member')
 );
 
 -- name: ListEnvVarKeys :many
@@ -278,8 +278,8 @@ FROM project_env_vars
 WHERE project_id = $1
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $1 AND tm.user_id = $2
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $1 AND wm.user_id = $2
 )
 ORDER BY environment, key_name;
 
@@ -297,21 +297,21 @@ INSERT INTO webhooks (id, project_id, provider, provider_install_id, hook_secret
 SELECT $1, $2, $3, $4, $5, $6
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $7 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $7 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
 -- name: GetWebhookByProviderInstall :one
-SELECT w.*, p.team_id FROM webhooks w
+SELECT w.*, p.workspace_id FROM webhooks w
 JOIN projects p ON w.project_id = p.id
 WHERE w.provider = $1 AND w.provider_install_id = $2 AND w.is_active = true;
 
 -- name: ListProjectWebhooks :many
 SELECT w.* FROM webhooks w
 JOIN projects p ON w.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE w.project_id = $1 AND tm.user_id = $2
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE w.project_id = $1 AND wm.user_id = $2
 ORDER BY w.created_at DESC;
 
 -- name: DeleteWebhook :execrows
@@ -320,8 +320,8 @@ WHERE webhooks.id = $1
 AND EXISTS (
     SELECT 1 FROM webhooks w
     JOIN projects p ON w.project_id = p.id
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE w.id = webhooks.id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE w.id = webhooks.id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 );
 
 -- ============================================================================
@@ -333,22 +333,22 @@ INSERT INTO deployments (id, project_id, environment, branch, commit_sha, commit
 SELECT $1, $2, $3, $4, $5, $6
 WHERE EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = $2 AND tm.user_id = $7 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = $2 AND wm.user_id = $7 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
 -- name: GetDeployment :one
 SELECT d.* FROM deployments d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.id = $1 AND tm.user_id = $2 AND d.deleted_at IS NULL;
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.id = $1 AND wm.user_id = $2 AND d.deleted_at IS NULL;
 
 -- name: ListProjectDeployments :many
 SELECT d.* FROM deployments d
 JOIN projects p ON d.project_id = p.id
-JOIN team_members tm ON p.team_id = tm.team_id
-WHERE d.project_id = $1 AND tm.user_id = $2 AND d.deleted_at IS NULL
+JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+WHERE d.project_id = $1 AND wm.user_id = $2 AND d.deleted_at IS NULL
 ORDER BY d.created_at DESC
 LIMIT $3 OFFSET $4;
 
@@ -373,8 +373,8 @@ UPDATE deployments SET status = 'canceled'
 WHERE deployments.id = $1 AND deployments.status IN ('queued', 'building')
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = deployments.project_id AND tm.user_id = $2 AND tm.role IN ('owner', 'member')
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = deployments.project_id AND wm.user_id = $2 AND wm.role IN ('owner', 'member')
 )
 RETURNING *;
 
@@ -383,18 +383,18 @@ UPDATE deployments SET deleted_at = NOW()
 WHERE deployments.id = $1 AND deployments.deleted_at IS NULL
 AND EXISTS (
     SELECT 1 FROM projects p
-    JOIN team_members tm ON p.team_id = tm.team_id
-    WHERE p.id = deployments.project_id AND tm.user_id = $2 AND tm.role = 'owner'
+    JOIN workspace_members wm ON p.workspace_id = wm.workspace_id
+    WHERE p.id = deployments.project_id AND wm.user_id = $2 AND wm.role = 'owner'
 );
 
 -- name: CountQueuedDeployments :one
 SELECT COUNT(*) FROM deployments
 WHERE status IN ('queued', 'building') AND deleted_at IS NULL;
 
--- name: CountTeamQueuedDeployments :one
+-- name: CountWorkspaceQueuedDeployments :one
 SELECT COUNT(*) FROM deployments d
 JOIN projects p ON d.project_id = p.id
-WHERE p.team_id = $1 AND d.status IN ('queued', 'building') AND d.deleted_at IS NULL;
+WHERE p.workspace_id = $1 AND d.status IN ('queued', 'building') AND d.deleted_at IS NULL;
 
 -- name: GetStaleBuilds :many
 SELECT * FROM deployments
@@ -432,14 +432,14 @@ SELECT COUNT(*) FROM build_log_lines WHERE deployment_id = $1;
 -- ============================================================================
 
 -- name: CreateAuditEntry :exec
-INSERT INTO audit_log (id, team_id, actor_id, action, resource_type, resource_id, metadata, ip_address, user_agent, created_at)
+INSERT INTO audit_log (id, workspace_id, actor_id, action, resource_type, resource_id, metadata, ip_address, user_agent, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
--- name: ListTeamAuditLog :many
+-- name: ListWorkspaceAuditLog :many
 SELECT al.*, u.email AS actor_email, u.name AS actor_name
 FROM audit_log al
 LEFT JOIN users u ON al.actor_id = u.id
-WHERE al.team_id = $1
+WHERE al.workspace_id = $1
 AND al.created_at >= $2
 AND al.created_at < $3
 ORDER BY al.created_at DESC
@@ -460,17 +460,17 @@ LIMIT $5;
 -- ============================================================================
 
 -- name: RecordUsage :exec
-INSERT INTO usage_records (id, team_id, metric, quantity, period_start, period_end)
+INSERT INTO usage_records (id, workspace_id, metric, quantity, period_start, period_end)
 VALUES ($1, $2, $3, $4, $5, $6);
 
--- name: GetTeamUsageSummary :many
+-- name: GetWorkspaceUsageSummary :many
 SELECT metric, SUM(quantity) AS total
 FROM usage_records
-WHERE team_id = $1 AND period_start >= $2 AND period_end <= $3
+WHERE workspace_id = $1 AND period_start >= $2 AND period_end <= $3
 GROUP BY metric;
 
--- name: GetTeamUsageDetail :many
+-- name: GetWorkspaceUsageDetail :many
 SELECT * FROM usage_records
-WHERE team_id = $1 AND metric = $2 AND period_start >= $3
+WHERE workspace_id = $1 AND metric = $2 AND period_start >= $3
 ORDER BY period_start DESC
 LIMIT $4;

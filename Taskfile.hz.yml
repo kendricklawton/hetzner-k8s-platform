@@ -1,0 +1,200 @@
+version: "3"
+
+vars:
+  PACKER_DIR: "infrastructure/packer"
+  HCLOUD_UBUNTU_VERSION: "ubuntu-24.04"
+  HCLOUD_K3S_TYPE: "cpx31"
+  HCLOUD_LB_TYPE: "lb11"
+  HCLOUD_NAT_TYPE: "cpx11"
+  HCLOUD_K3S_SERVER_TYPE: "cpx31"
+  HCLOUD_K3S_AGENT_TYPE: "cpx31"
+  HETZNER_CCM_VERSION: "1.29.1"
+  HETZNER_CSI_VERSION: "2.6.0"
+  DIGITALOCEAN_CCM_VERSION: "0.1.58"
+  DIGITALOCEAN_CSI_VERSION: "4.8.0"
+
+tasks:
+  _packer_build:
+    internal: true
+    silent: true
+    desc: "Generic Packer Build Wrapper"
+    dir: "{{.ROOT_DIR}}/{{.PACKER_DIR}}"
+    env:
+      PKR_VAR_hcloud_token: "{{.HCLOUD_TOKEN}}"
+    cmds:
+      - packer init .
+      - >-
+        packer build {{.BUILD_ARGS}}
+        -var "k3s_version={{.K3S_VERSION}}"
+        -var "hcloud_k3s_type={{.HCLOUD_K3S_TYPE}}"
+        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
+        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
+        .
+
+  packer:
+    desc: "Build Hetzner Cloud Infrastructure"
+    cmds:
+      - task: _packer_build
+        vars: { BUILD_ARGS: "-only=*.hcloud.* -parallel-builds=2" }
+
+  packer:nat:
+    desc: "Build ONLY the Hetzner NAT Gateway image"
+    cmds:
+      - task: _packer_build
+        vars: { BUILD_ARGS: "-only=nat.hcloud.* -parallel-builds=2" }
+
+  packer:k3s:
+    desc: "Build ONLY the Hetzner K3s image"
+    cmds:
+      - task: _packer_build
+        vars: { BUILD_ARGS: "-only=k3s.hcloud.* -parallel-builds=2" }
+
+  packer:do:
+    desc: "Build DigitalOcean Cloud Infrastructure"
+    cmds:
+      - task: _packer_build
+        vars: { BUILD_ARGS: "-only=*.docloud.* -parallel-builds=2" }
+
+  _tf:
+    internal: true
+    dir: "{{.ROOT_DIR}}/infrastructure/terraform/providers/{{.PROVIDER}}"
+    vars:
+      TFSTATE_BUCKET: "{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}"
+      CCM_VERSION: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_CCM_VERSION}}{{else}}{{.DIGITALOCEAN_CCM_VERSION}}{{end}}'
+      CSI_VERSION: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_CSI_VERSION}}{{else}}{{.DIGITALOCEAN_CSI_VERSION}}{{end}}'
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}.json"
+      DIGITALOCEAN_TOKEN: "{{.DOCLOUD_TOKEN}}"
+      HCLOUD_TOKEN: "{{.HCLOUD_TOKEN}}"
+      TF_VAR_project_name: "{{.PROJECT_NAME}}"
+      TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
+      TF_VAR_cloud_env: "{{.CLOUD_ENV}}"
+      TF_VAR_token: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_TOKEN}}{{else}}{{.DOCLOUD_TOKEN}}{{end}}'
+      TF_VAR_ssh_key_name: '{{if eq .PROVIDER "hetzner"}}{{.HETZNER_SSH_KEY_NAME}}{{else}}{{.DIGITALOCEAN_SSH_KEY_NAME}}{{end}}'
+      TF_VAR_location: "{{.LOCATION}}"
+      TF_VAR_k3s_server_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_K3S_SERVER_TYPE}}{{else}}{{.DOCLOUD_K3S_SERVER_TYPE}}{{end}}'
+      TF_VAR_k3s_agent_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_K3S_AGENT_TYPE}}{{else}}{{.DOCLOUD_K3S_AGENT_TYPE}}{{end}}'
+      TF_VAR_nat_gateway_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_NAT_TYPE}}{{else}}{{.DOCLOUD_NAT_TYPE}}{{end}}'
+      TF_VAR_load_balancer_type: '{{if eq .PROVIDER "hetzner"}}{{.HCLOUD_LB_TYPE}}{{else}}{{.DOCLOUD_LB_TYPE}}{{end}}'
+      TF_VAR_tailscale_auth_nat_key: "{{.TAILSCALE_AUTH_NAT_KEY}}"
+      TF_VAR_tailscale_auth_k3s_server_key: "{{.TAILSCALE_AUTH_K3S_SERVER_KEY}}"
+      TF_VAR_tailscale_auth_k3s_agent_key: "{{.TAILSCALE_AUTH_K3S_AGENT_KEY}}"
+      TF_VAR_etcd_s3_access_key: "{{.ETCD_S3_ACCESS_KEY}}"
+      TF_VAR_etcd_s3_secret_key: "{{.ETCD_S3_SECRET_KEY}}"
+      TF_VAR_etcd_s3_bucket: "{{.PROJECT_NAME}}-etcd-{{.CLOUD_ENV}}"
+      TF_VAR_etcd_s3_region: "{{.S3_REGION}}"
+      TF_VAR_etcd_s3_endpoint: "https://storage.googleapis.com"
+      TF_VAR_ccm_version: "{{.CCM_VERSION}}"
+      TF_VAR_csi_version: "{{.CSI_VERSION}}"
+      TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
+      TF_VAR_ingress_nginx_version: "{{.INGRESS_NGINX_VERSION}}"
+      TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
+      TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
+    cmds:
+      - echo "[TERRAFORM] {{.CMD}} -> {{.PROVIDER}} -> {{.LOCATION}} -> {{.CLOUD_ENV}}"
+      - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.PROVIDER}}"
+      - terraform {{.CMD}} {{.ARGS}}
+
+  plan:
+    desc: "Plan Hetzner Ashburn"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "hetzner",
+            LOCATION: "ash",
+            CLOUD_ENV: "dev",
+            CMD: "plan",
+            ARGS: "-out=tfplan",
+          }
+
+  apply:
+    desc: "Apply Hetzner Ashburn"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "hetzner",
+            LOCATION: "ash",
+            CLOUD_ENV: "dev",
+            CMD: "apply",
+            ARGS: "-auto-approve tfplan",
+          }
+
+  destroy:
+    desc: "Destroy Hetzner Ashburn"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "hetzner",
+            LOCATION: "ash",
+            CLOUD_ENV: "dev",
+            CMD: "destroy",
+            ARGS: "-auto-approve",
+          }
+
+  output:
+    desc: "Show Hetzner Outputs"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "hetzner",
+            LOCATION: "ash",
+            CLOUD_ENV: "dev",
+            CMD: "output",
+            ARGS: "",
+          }
+
+  do:plan:
+    desc: "Plan DigitalOcean NYC3 (Dev)"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "digitalocean",
+            LOCATION: "nyc3",
+            CLOUD_ENV: "dev",
+            CMD: "plan",
+            ARGS: "-out=tfplan",
+          }
+
+  do:apply:
+    desc: "Apply DigitalOcean NYC3 (Dev)"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            PROVIDER: "digitalocean",
+            LOCATION: "nyc3",
+            CLOUD_ENV: "dev",
+            CMD: "apply",
+            ARGS: "-auto-approve tfplan",
+          }
+
+  cluster:seal:
+    desc: "Create and seal a secret via SSH on the legacy cluster"
+    requires:
+      vars: [TENANT, NAME, KEY, VAL]
+    vars:
+      CP_HOSTNAME:
+        sh: cd infrastructure/terraform/providers/hetzner && terraform output -raw control_plane_init_hostname
+    cmds:
+      - mkdir -p tenants/{{.TENANT}}
+      - >-
+        ssh root@{{.CP_HOSTNAME}} "
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml;
+
+        if ! command -v kubeseal >/dev/null 2>&1; then
+          echo '⬇️ Installing kubeseal on remote server...' >&2;
+          wget -qO kubeseal.tar.gz https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.1/kubeseal-0.27.1-linux-amd64.tar.gz;
+          tar -xzf kubeseal.tar.gz kubeseal;
+          mv kubeseal /usr/local/bin/kubeseal;
+          rm kubeseal.tar.gz;
+        fi;
+
+        kubectl create secret generic {{.NAME}} -n {{.TENANT}} --from-literal={{.KEY}}='{{.VAL}}' --dry-run=client -o yaml |
+        kubeseal --controller-name=sealed-secrets --controller-namespace=kube-system -o yaml
+        " > tenants/{{.TENANT}}/{{.NAME}}-secret.yaml
+      - echo "✅ Sealed secret saved locally to tenants/{{.TENANT}}/{{.NAME}}-secret.yaml"
