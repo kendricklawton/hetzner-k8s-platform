@@ -24,9 +24,6 @@ vars:
 
 # --- INFRASTRUCTURE NAMESPACES ---
 includes:
-  hub:
-    taskfile: ./Taskfile.hub.yml
-    dir: . # Execute tasks from the root directory
   hz:
     taskfile: ./Taskfile.hz.yml
     dir: .

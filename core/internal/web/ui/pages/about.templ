@@ -3,13 +3,13 @@ package pages
 import "github.com/kendricklawton/project-platform/core/internal/web/ui/components"
 
 templ AboutPage(userName string) {
-	@components.Layout("About | Machine Name", userName) {
+	@components.Layout("About | Platform ", userName) {
 		@AboutContent(userName)
 	}
 }
 
 templ AboutContent(userName string) {
-	<title>About | Machine Name</title>
+	<title>About | Platform</title>
 	<div class="flex flex-col gap-24 py-12 relative">
 		// ── HERO ──────────────────────────────────────────────────────────────
 		<section class="relative z-10 flex flex-col gap-6 max-w-3xl">
