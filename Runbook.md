@@ -1,263 +1,156 @@
 # Runbook
 
-Operational procedures for provisioning, deploying, and operating the project-platform infrastructure.
-
-> See [README.md](./README.md) for stack overview and local dev setup.
-> See [K8s.md](./K8s.md) for kubectl/ArgoCD/Cilium/CNPG command reference.
-> See [POSTGRES.md](./POSTGRES.md) for PostgreSQL and CNPG command reference.
+Operational procedures for the platform. Single-operator context — this is for me.
 
 ---
 
-## Security Rules
+## Cluster Bootstrap
 
-- Never commit secrets, private keys, or service account JSON to the repository.
-- Use `.env` (gitignored) for local development credentials.
-- Use Sealed Secrets for all in-cluster secrets.
-- GCS service account JSON for Terraform remote state lives in `keys/` (gitignored).
+### 1. Build golden images (Packer)
+```sh
+cd infrastructure/packer
+packer build ubuntu.pkr.hcl
+```
+This produces a hardened Ubuntu snapshot in Hetzner. Two image types: `role=k3s-node` and `role=nat-gateway`.
+
+### 2. Provision infrastructure (Terraform)
+```sh
+cd infrastructure/terraform/providers/hetzner
+
+# Dev
+terraform init -backend-config=... 
+terraform apply -var-file=dev.tfvars
+
+# Prod
+terraform apply -var-file=prod.tfvars
+```
+
+Terraform creates:
+- VPC + subnet
+- NAT gateway server
+- K3s API load balancer + ingress load balancer
+- Control plane servers (1 for dev, 3 for prod) with K3s bootstrap cloud-init
+- Worker nodes (1 for dev, 3 for prod)
+- Bootstrap manifests injected into `/var/lib/rancher/k3s/server/manifests/` on the init server
+
+### 3. Connect to cluster
+```sh
+# Via Tailscale — kubectl config is on the init server
+ssh ubuntu@<tailscale-ip-of-init-server>
+sudo cat /etc/rancher/k3s/k3s.yaml
+```
+Copy kubeconfig locally and replace `127.0.0.1` with the Tailscale IP of the init server.
+
+### 4. Verify bootstrap
+```sh
+kubectl get nodes
+kubectl get pods -A
+```
+ArgoCD, Cilium, ingress-nginx, cert-manager, Sealed Secrets should all be running.
 
 ---
 
-## Preflight Checklist
+## ArgoCD
 
-Before any provisioning or deployment operation, verify:
-
-```bash
-task --version
-terraform --version
-kubectl version --client
-packer --version
-buf --version
-go version
-kubeseal --version
-tailscale version
-```
-
-> ArgoCD runs on the cluster — no local CLI install needed. Interact via port-forward or the UI (see section C).
-
-Verify `.env` is populated:
-- `HIVELOCITY_API_KEY`
-- `WORKOS_CLIENT_ID`, `WORKOS_CLIENT_SECRET`
-- `DATABASE_URL`
-- GCS credentials path for Terraform backend
-
----
-
-## Cluster Access via Tailscale
-
-The K3s API server listens on the node's **Tailscale IP** (not the public IP). kubectl will not reach the cluster unless Tailscale is connected on your machine.
-
-### 1. Connect Tailscale
-
-```bash
-tailscale up
-tailscale status          # confirm the control plane node appears and is online
-tailscale ping <node-tailscale-hostname>   # verify reachability
-```
-
-### 2. Fetch the kubeconfig
-
-`task hv:kubeconfig` pulls the kubeconfig from the cluster and merges it into `~/.kube/config`. Terraform patches the `server:` address to the Tailscale IP of the control plane node automatically.
-
-```bash
-task hv:kubeconfig     # fetch + merge for Hivelocity cluster
-```
-
-### 3. Verify kubectl is pointing at the right cluster
-
-```bash
-kubectl config current-context      # confirm context name
-kubectl config get-contexts         # list all contexts
-kubectl cluster-info                # should show the Tailscale IP, not 127.0.0.1
-kubectl get nodes -o wide           # nodes should appear
-```
-
-### If kubectl times out
-
-The most common causes:
-1. **Tailscale is not connected** — run `tailscale up` and retry.
-2. **Wrong server address in kubeconfig** — the `server:` field must be the Tailscale IP, not a public or internal IP. Check with:
-   ```bash
-   kubectl config view --minify | grep server
-   # Should be: https://<tailscale-ip>:6443
-   ```
-   If it shows the wrong address, re-run `task hv:kubeconfig` or patch it manually:
-   ```bash
-   kubectl config set-cluster <cluster-name> --server=https://<tailscale-ip>:6443
-   ```
-3. **Wrong context active** — run `kubectl config use-context <correct-context>`.
-4. **Node is down** — check Hivelocity console or Terraform state.
-
----
-
-## A. Build Golden Images (Packer)
-
-Packer images bake in K3s, gVisor (`runsc`), and Tailscale. Images are used as the base for all Terraform-provisioned nodes.
-
-```bash
-task packer:hv:k3s     # Hivelocity — K3s node image
-task packer:hv:nat     # Hivelocity — NAT gateway image
-```
-
-After a build, update the Terraform variable that references the image ID before provisioning new nodes.
-
----
-
-## B. Infrastructure Provisioning (Terraform)
-
-Terraform state is stored remotely in GCS. Provider: Hivelocity (Dallas hub).
-
-### Hivelocity
-
-```bash
-task hv:plan           # preview changes
-task hv:apply          # provision / update infrastructure
-task hv:output         # show Terraform outputs (IPs, Floating IP, etc.)
-task hv:kubeconfig     # fetch and merge kubeconfig for the cluster
-task hv:destroy        # DESTRUCTIVE — tears down all Hivelocity resources
-```
-
-After `hv:apply`, Terraform bootstraps the cluster by applying manifests from `infrastructure/terraform/modules/k3s_node/bootstrap/`. This installs ArgoCD and registers the root App of Apps. All subsequent platform component management is handled by ArgoCD.
-
-### Floating IP (Edge Router)
-
-The Floating IP is provisioned alongside the cluster and mapped to the primary bare-metal node. It uses Hivelocity's 20 TB unmetered bandwidth pool — no per-GB egress billing.
-
-```bash
-# Reassign Floating IP to a different node (failover)
-task hv:floating-ip-reassign NODE=<target-node-id>
-```
-
----
-
-## C. GitOps — ArgoCD
-
-ArgoCD runs on the cluster and watches this repo. There is no local ArgoCD CLI install. All deployments happen via Git — push to `main` and ArgoCD picks it up.
-
-All platform component manifests live under `infrastructure/argocd`. Do not `kubectl apply` directly for anything ArgoCD manages.
-
-### Normal workflow
-
-```
-1. Edit manifests in infrastructure/argocd
-2. Commit and push to main
-3. ArgoCD auto-syncs — done
-```
-
-### Check sync status (via kubectl)
-
-```bash
-# ArgoCD app resources
-kubectl get applications -n argocd
-kubectl describe application <app-name> -n argocd
-
-# ArgoCD pods healthy
-kubectl get pods -n argocd
-
-# Events (shows sync errors)
-kubectl get events -n argocd --sort-by='.lastTimestamp'
-```
-
-### Access ArgoCD UI (port-forward to cluster)
-
-```bash
+### Access
+ArgoCD is not exposed on a public ingress by default. Use port-forward:
+```sh
 kubectl port-forward svc/argocd-server -n argocd 8080:443
-# Open https://localhost:8080
-# Admin password:
-kubectl -n argocd get secret argocd-initial-admin-secret \
+# https://localhost:8080
+```
+Or add a Tailscale-internal ingress rule for direct access.
+
+### Initial admin password
+```sh
+kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-If you have the `argocd` CLI installed locally (optional):
-
-```bash
-argocd login localhost:8080 --insecure --username admin --password <password>
-argocd app list
+### Sync an app manually
+```sh
 argocd app sync <app-name>
-argocd app diff <app-name>
-argocd app rollback <app-name> <revision>
 ```
 
 ---
 
-## D. Sealed Secrets
+## Sealed Secrets
 
-All in-cluster secrets must be sealed before committing to Git.
-
-```bash
-# Fetch the controller public cert (do this once per cluster, store cert locally)
+### Seal a new secret
+```sh
+# Fetch the cluster public key
 kubeseal --fetch-cert \
-  --controller-namespace kube-system \
-  --controller-name sealed-secrets-controller > pub-cert.pem
+  --controller-name=sealed-secrets \
+  --controller-namespace=kube-system > pub-cert.pem
 
-# Create and seal a secret
-kubectl create secret generic <name> \
+# Seal
+kubectl create secret generic my-secret \
   --from-literal=key=value \
   --dry-run=client -o yaml | \
-  kubeseal --cert pub-cert.pem -o yaml > sealed-<name>.yaml
-
-# Or use the Taskfile shortcut (SSHs into cluster, runs kubeseal remotely)
-task cluster:seal TENANT=<ns> NAME=<secret> KEY=<k> VAL=<v>
+  kubeseal --cert pub-cert.pem --format yaml > my-secret-sealed.yaml
 ```
+Commit `my-secret-sealed.yaml` to Git. Never commit the raw secret.
 
-Sealed secrets are safe to commit — they can only be decrypted by the sealed-secrets controller inside the cluster.
+### Rotate a sealed secret
+Re-seal with the current cluster key and push to Git. ArgoCD syncs it.
 
 ---
 
-## E. Platform Deployments
+## Database (CNPG)
 
-All platform services are deployed via ArgoCD. Typical deployment flow:
-
-```
-1. Build + push image (CI/CD or manual)
-2. Update image tag in infrastructure/argocd/<service>/deployment.yaml
-3. Commit and push to main
-4. ArgoCD detects diff and syncs within ~3 minutes
-5. Verify: kubectl rollout status deployment/<name> -n <ns>
+### Connect
+```sh
+kubectl exec -it -n postgres \
+  $(kubectl get pod -n postgres -l role=primary -o name | head -1) \
+  -- psql -U platform platform
 ```
 
-For emergency rollback:
-
-```bash
-argocd app rollback <app-name> <revision>
-# or
-kubectl rollout undo deployment/<name> -n <ns>
+### Manual backup trigger
+```sh
+kubectl annotate cluster platform-cluster \
+  -n postgres \
+  cnpg.io/immediateBackup=true
 ```
 
----
-
-## F. Observability
-
-```bash
-# VictoriaMetrics
-kubectl port-forward svc/victoria-metrics -n monitoring 8428:8428
-# Open http://localhost:8428
-
-# Grafana
-kubectl port-forward svc/grafana -n monitoring 3000:3000
-# Open http://localhost:3000 (admin / check sealed secret for password)
-
-# Loki (query via Grafana — no direct UI)
-kubectl logs -n monitoring -l app=loki --tail=50
-
-# Fluent Bit (log shipper)
-kubectl get pods -n monitoring -l app=fluent-bit
-kubectl logs -n monitoring -l app=fluent-bit --tail=50
+### Check backup status
+```sh
+kubectl get backup -n postgres
 ```
 
 ---
 
-## G. Database Operations (CNPG)
+## Deployments
 
-See [POSTGRES.md](./POSTGRES.md) for full PostgreSQL and CNPG command reference.
+Applications are deployed as ArgoCD `Application` CRs pointing to Helm charts or raw manifests in this repo. To deploy a new app:
 
-Quick cluster health check:
+1. Add Kubernetes manifests (Deployment, Service, Ingress) under `infrastructure/argocd/manifests/apps/<app-name>/`
+2. Add an ArgoCD `Application` CR under `infrastructure/argocd/apps/`
+3. Push to Git — ArgoCD auto-syncs
 
-```bash
-kubectl get cluster -n database
-kubectl describe cluster platform-db -n database
-kubectl get pods -n database
-```
+For TLS: cert-manager issues Let's Encrypt certificates automatically when an `Ingress` resource has the `cert-manager.io/cluster-issuer: letsencrypt-prod` annotation.
 
 ---
 
-> Do not commit secrets, private keys, or service account JSON files. Use `.env` for local dev (gitignored). Use Sealed Secrets for in-cluster secrets.
+## Teardown
+
+```sh
+cd infrastructure/terraform/providers/hetzner
+terraform destroy -var-file=dev.tfvars
+```
+This destroys all cloud resources. Sealed Secrets keys are lost — re-sealing all secrets is required on next bootstrap.
+
+---
+
+## Terraform Resource Names
+
+Pattern: `{env}-{region}-{type}[-{role}][-{index}]`
+
+```
+dev-eu-central-nat
+dev-eu-central-net
+dev-eu-central-lb-api
+dev-eu-central-lb-ingress
+dev-eu-central-server-cp-01
+dev-eu-central-server-wk-01
+```
+
+`env` and `region` are plain input variables — not derived from provider codes. This keeps the naming convention stable across providers.

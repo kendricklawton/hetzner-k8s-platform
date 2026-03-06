@@ -6,14 +6,12 @@ import (
 	"github.com/kendricklawton/project-platform/core/internal/service"
 )
 
-// Services holds pointers to your actual Business Logic (The internal services).
+// Services holds pointers to the business logic services.
 type Services struct {
-	Workspace *service.WorkspaceServer
-	User *service.UserServer
 	Auth *service.AuthService
 }
 
-// Handler is the core API layer.
+// handler is the core API layer.
 type handler struct {
 	K8s            *k8s.Client
 	Store          db.Store

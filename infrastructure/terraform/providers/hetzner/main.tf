@@ -18,11 +18,11 @@ terraform {
 }
 
 # VARIABLES
-variable "project_name" { type = string }
-variable "cloud_env" { type = string }
+variable "env" { type = string }          # dev | prod
+variable "region" { type = string }       # plain string: eu-central, us-east, etc.
 variable "token" { sensitive = true }
 variable "ssh_key_name" { type = string }
-variable "location" { type = string }
+variable "location" { type = string }     # Hetzner datacenter code: nbg1, fsn1, hel1, ash, hil
 
 # Server Types
 variable "k3s_server_type" { type = string }
@@ -60,34 +60,35 @@ provider "hcloud" {
 }
 
 locals {
-  location_zone_map = { "ash" = "us-east", "hil" = "us-west" }
-  network_zone      = local.location_zone_map[var.location]
-  prefix            = "${var.cloud_env}-${local.network_zone}"
+  # {env}-{region} — both are plain input variables, no provider-specific derivation.
+  # Pattern: {env}-{region}-{type}[-{role}][-{index}]
+  # Examples: dev-eu-central-server-cp-01, prod-us-east-lb-api
+  prefix = "${var.env}-${var.region}"
 
   # Infrastructure IPs
   nat_server_ip                = cidrhost("10.0.1.0/24", 2)
   k3s_api_load_balancer_ip     = cidrhost("10.0.1.0/24", 11)
   k3s_ingress_load_balancer_ip = cidrhost("10.0.1.0/24", 12)
 
-  # Server/Agent Configuration Map
+  # Cluster size per environment
   cluster_config = {
     dev  = { server_count = 1, agent_count = 1 }
     prod = { server_count = 3, agent_count = 3 }
   }
 
-  # Generate "Sticky" maps for the Recycle Method
+  # Sticky name→IP maps for the recycle method
   server_map = {
-    for i in range(local.cluster_config[var.cloud_env].server_count) :
-    format("${local.prefix}-k3s-sv-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 21)
+    for i in range(local.cluster_config[var.env].server_count) :
+    format("${local.prefix}-server-cp-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 21)
   }
 
   agent_map = {
-    for i in range(local.cluster_config[var.cloud_env].agent_count) :
-    format("${local.prefix}-k3s-ag-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 31)
+    for i in range(local.cluster_config[var.env].agent_count) :
+    format("${local.prefix}-server-wk-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 31)
   }
 
-  # Split the first server out for cluster-init
-  init_server_name = format("${local.prefix}-k3s-sv-%02d", 1)
+  # Split the init server out for cluster-init bootstrap
+  init_server_name = format("${local.prefix}-server-cp-%02d", 1)
   join_servers     = { for k, v in local.server_map : k => v if k != local.init_server_name }
 
   manifest_injector_script = join("\n", [
@@ -113,14 +114,14 @@ data "hcloud_ssh_key" "admin" {
 
 # --- NETWORK ---
 resource "hcloud_network" "main" {
-  name     = "${local.prefix}-vnet"
+  name     = "${local.prefix}-net"
   ip_range = "10.0.0.0/16"
 }
 
 resource "hcloud_network_subnet" "k3s_nodes" {
   network_id   = hcloud_network.main.id
   type         = "cloud"
-  network_zone = local.network_zone
+  network_zone = var.region  # Hetzner network zone — matches var.region (eu-central, us-east, us-west, ap-southeast)
   ip_range     = "10.0.1.0/24"
 }
 
@@ -200,18 +201,27 @@ resource "random_password" "k3s_token" {
 
 module "k3s_manifests" {
   source                 = "../../modules/k3s_node"
-  cloud_provider_name    = "hcloud"
-  cloud_provider_mtu     = 1450
+  mtu                    = 1450
   k3s_load_balancer_ip   = local.k3s_api_load_balancer_ip
   cilium_version         = var.cilium_version
   ingress_nginx_version  = var.ingress_nginx_version
   sealed_secrets_version = var.sealed_secrets_version
   argocd_version         = var.argocd_version
   git_repo_url           = var.git_repo_url
-  token                  = var.token
-  hcloud_network_name    = hcloud_network.main.name
-  ccm_version            = var.ccm_version
-  csi_version            = var.csi_version
+
+  # Hetzner-specific manifests: cloud secret, CCM, CSI
+  extra_manifests = {
+    "000-hcloud-secret.yaml" = templatefile("${path.module}/bootstrap/000-hcloud-secret.yaml", {
+      Token   = var.token
+      Network = hcloud_network.main.name
+    })
+    "010-hcloud-ccm.yaml" = templatefile("${path.module}/bootstrap/010-hcloud-ccm.yaml", {
+      CCMVersion = var.ccm_version
+    })
+    "020-hcloud-csi.yaml" = templatefile("${path.module}/bootstrap/020-hcloud-csi.yaml", {
+      CSIVersion = var.csi_version
+    })
+  }
 }
 
 # --- PHASE 1: CONTROL PLANE INIT ---
