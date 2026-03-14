@@ -4,11 +4,11 @@
 
 locals {
   backup_buckets = {
-    postgres         = "hkp-${var.env}-postgres-backups"
-    etcd             = "hkp-${var.env}-etcd-backups"
-    rustfs           = "hkp-${var.env}-rustfs-backups"
-    victoriametrics  = "hkp-${var.env}-victoriametrics-backups"
-    loki             = "hkp-${var.env}-loki-backups"
+    postgres        = "hkp-${var.env}-postgres-backups"
+    etcd            = "hkp-${var.env}-etcd-backups"
+    rustfs          = "hkp-${var.env}-rustfs-backups"
+    victoriametrics = "hkp-${var.env}-victoriametrics-backups"
+    loki            = "hkp-${var.env}-loki-backups"
   }
 }
 
@@ -25,19 +25,33 @@ resource "google_storage_bucket" "postgres_backups" {
 
   lifecycle_rule {
     condition { age = 30 }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 90 }
     action { type = "Delete" }
   }
   lifecycle_rule {
-    condition { num_newer_versions = 1; with_state = "NONCURRENT" }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    condition {
+      num_newer_versions = 1
+      with_state         = "NONCURRENT"
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
-    condition { days_since_noncurrent_time = 30; with_state = "NONCURRENT" }
-    action { type = "Delete" }
+    condition {
+      days_since_noncurrent_time = 30
+      with_state                 = "NONCURRENT"
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 
@@ -54,19 +68,35 @@ resource "google_storage_bucket" "etcd_backups" {
 
   lifecycle_rule {
     condition { age = 30 }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 90 }
-    action { type = "Delete" }
+    action {
+      type = "Delete"
+    }
   }
   lifecycle_rule {
-    condition { num_newer_versions = 1; with_state = "NONCURRENT" }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    condition {
+      num_newer_versions = 1
+      with_state         = "NONCURRENT"
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
-    condition { days_since_noncurrent_time = 30; with_state = "NONCURRENT" }
-    action { type = "Delete" }
+    condition {
+      days_since_noncurrent_time = 30
+      with_state                 = "NONCURRENT"
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 
@@ -84,23 +114,42 @@ resource "google_storage_bucket" "rustfs_backups" {
   # Artifacts/objects — keep longer than observability data.
   lifecycle_rule {
     condition { age = 30 }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 90 }
-    action { type = "SetStorageClass"; storage_class = "COLDLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 180 }
-    action { type = "Delete" }
+    action {
+      type = "Delete"
+    }
   }
   lifecycle_rule {
-    condition { num_newer_versions = 1; with_state = "NONCURRENT" }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    condition {
+      num_newer_versions = 1
+      with_state         = "NONCURRENT"
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
-    condition { days_since_noncurrent_time = 30; with_state = "NONCURRENT" }
-    action { type = "Delete" }
+    condition {
+      days_since_noncurrent_time = 30
+      with_state                 = "NONCURRENT"
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 
@@ -117,19 +166,35 @@ resource "google_storage_bucket" "victoriametrics_backups" {
 
   lifecycle_rule {
     condition { age = 30 }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 90 }
-    action { type = "Delete" }
+    action {
+      type = "Delete"
+    }
   }
   lifecycle_rule {
-    condition { num_newer_versions = 1; with_state = "NONCURRENT" }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    condition {
+      num_newer_versions = 1
+      with_state         = "NONCURRENT"
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
-    condition { days_since_noncurrent_time = 30; with_state = "NONCURRENT" }
-    action { type = "Delete" }
+    condition {
+      days_since_noncurrent_time = 30
+      with_state                 = "NONCURRENT"
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 
@@ -146,19 +211,35 @@ resource "google_storage_bucket" "loki_backups" {
 
   lifecycle_rule {
     condition { age = 30 }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
     condition { age = 90 }
-    action { type = "Delete" }
+    action {
+      type = "Delete"
+    }
   }
   lifecycle_rule {
-    condition { num_newer_versions = 1; with_state = "NONCURRENT" }
-    action { type = "SetStorageClass"; storage_class = "NEARLINE" }
+    condition {
+      num_newer_versions = 1
+      with_state         = "NONCURRENT"
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
   }
   lifecycle_rule {
-    condition { days_since_noncurrent_time = 30; with_state = "NONCURRENT" }
-    action { type = "Delete" }
+    condition {
+      days_since_noncurrent_time = 30
+      with_state                 = "NONCURRENT"
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 

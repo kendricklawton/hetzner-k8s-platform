@@ -25,6 +25,12 @@ spec:
           value: "true"
         - name: controller.podSecurityContext.runAsNonRoot
           value: "true"
+        - name: controller.containerSecurityContext.allowPrivilegeEscalation
+          value: "false"
+        - name: controller.containerSecurityContext.capabilities.drop[0]
+          value: "ALL"
+        - name: controller.containerSecurityContext.capabilities.add[0]
+          value: "NET_BIND_SERVICE"
         # Hetzner CCM annotations: use-private-ip and proxyprotocol are
         # env-agnostic. The LB name (env-specific) is added via Kustomize
         # overlay in infra/argocd/envs/{env}/kustomization.yaml.

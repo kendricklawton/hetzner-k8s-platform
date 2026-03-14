@@ -43,6 +43,11 @@ spec:
                 Port        3100
                 Labels      job=fluent-bit,namespace=$kubernetes['namespace_name'],pod=$kubernetes['pod_name']
                 Auto_Kubernetes_Labels On
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: true
         tolerations:
           - operator: Exists
   destination:

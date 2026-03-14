@@ -33,6 +33,23 @@ write_files:
       rules:
       - level: Metadata
 
+  # ENCRYPTION AT REST — encrypts Secrets in etcd (CKS requirement)
+  - path: /etc/kubernetes/encryption-config.yaml
+    permissions: "0600"
+    owner: root:root
+    content: |
+      apiVersion: apiserver.config.k8s.io/v1
+      kind: EncryptionConfiguration
+      resources:
+        - resources:
+            - secrets
+          providers:
+            - aescbc:
+                keys:
+                  - name: key1
+                    secret: "${encryption_key}"
+            - identity: {}
+
   # KUBEADM CONFIG — init vs join handled by role
   - path: /etc/kubernetes/kubeadm-config.yaml
     permissions: "0600"
@@ -44,7 +61,7 @@ write_files:
       kind: InitConfiguration
       bootstrapTokens:
         - token: "${kubeadm_token}"
-          ttl: "0"
+          ttl: "24h"
       certificateKey: "${kubeadm_cert_key}"
       nodeRegistration:
         name: "${hostname}"
@@ -88,6 +105,10 @@ write_files:
             value: "3"
           - name: audit-log-maxsize
             value: "10"
+          - name: enable-admission-plugins
+            value: "NodeRestriction"
+          - name: encryption-provider-config
+            value: /etc/kubernetes/encryption-config.yaml
         extraVolumes:
           - name: audit-policy
             hostPath: /etc/kubernetes/audit-policy.yaml
@@ -97,6 +118,10 @@ write_files:
             hostPath: /var/log/kubernetes
             mountPath: /var/log/kubernetes
             readOnly: false
+          - name: encryption-config
+            hostPath: /etc/kubernetes/encryption-config.yaml
+            mountPath: /etc/kubernetes/encryption-config.yaml
+            readOnly: true
         certSANs:
           - "${hostname}"
           - "${kubernetes_api_lb_ip}"
@@ -114,6 +139,16 @@ write_files:
       kind: KubeletConfiguration
       cgroupDriver: systemd
       containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
+      anonymous:
+        enabled: false
+      authentication:
+        webhook:
+          enabled: true
+      authorization:
+        mode: Webhook
+      readOnlyPort: 0
+      rotateCertificates: true
+      protectKernelDefaults: true
 
   # HCLOUD CCM + CSI SECRET: applied by bootstrap script after kubeadm init
   # Uses a read-only + volumes scoped token, NOT the full Terraform API token.

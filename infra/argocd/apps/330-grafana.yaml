@@ -72,6 +72,11 @@ spec:
           runAsNonRoot: true
           runAsUser: 472
           fsGroup: 472
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: false
   destination:
     server: "https://kubernetes.default.svc"
     namespace: observability

@@ -81,7 +81,12 @@ spec:
           initContainers:
             - name: etcd-snapshot
               # Use the same etcd image that kubeadm deploys (k8s 1.32 → etcd 3.5.16)
+              # Runs as root — requires hostPath access to etcd PKI certs
               image: registry.k8s.io/etcd:3.5.16-0
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
               env:
                 - name: ETCDCTL_API
                   value: "3"
@@ -124,6 +129,11 @@ spec:
           containers:
             - name: gcs-upload
               image: google/cloud-sdk:511.0.0-slim
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                readOnlyRootFilesystem: false
               command:
                 - /bin/sh
                 - -c

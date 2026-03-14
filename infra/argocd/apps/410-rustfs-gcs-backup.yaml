@@ -25,6 +25,13 @@ spec:
           containers:
             - name: rclone-sync
               image: rclone/rclone:1.65
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                readOnlyRootFilesystem: true
               env:
                 - name: RUSTFS_BUCKET
                   valueFrom:

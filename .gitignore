@@ -1,17 +1,3 @@
-# BINARIES & BUILD ARTIFACTS
-/bin/
-/dist/
-/out/
-/build/
-packer/infra-bootstrap
-*.exe
-*.test
-*.prof
-.claude
-
-# GO
-vendor/
-
 # TERRAFORM & INFRASTRUCTURE
 .terraform/
 *.tfstate
@@ -20,12 +6,15 @@ vendor/
 .tfvars
 generated.tf
 override.tf
+tfplan
+
+# PACKER
+infra/packer/.plugins
 
 # KUBERNETES & LOCAL OPS
 .kube/
 .task/
 /checksum
-tfplan
 tenants/
 
 # ENVIRONMENT & SECRETS (Never commit these!)
@@ -34,17 +23,15 @@ tenants/
 *.pem
 /keys
 
-# OS & MISC
+# OS & EDITOR
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+.claude
 
+# PERSONAL SCRATCH (local only)
 PLATFORM.md
-
-# PACKER WORKFLOWS
-infra/packer/.plugins
 SCRATCHPAD.md
-
-tmp
 NVIM.md
+tmp

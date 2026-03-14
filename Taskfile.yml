@@ -200,6 +200,63 @@ tasks:
       - gcloud storage buckets update gs://{{.TFSTATE_BUCKET}} --versioning
       - echo "[BOOTSTRAP] Verified versioning enabled on gs://{{.TFSTATE_BUCKET}}"
 
+  # --- VALIDATION ---
+  validate:
+    desc: "Run all static validation checks"
+    cmds:
+      - task: validate:terraform
+      - task: validate:packer
+      - task: validate:kustomize
+      - task: validate:manifests
+
+  validate:terraform:
+    desc: "Validate Terraform configuration"
+    dir: "{{.ROOT_DIR}}/infra/terraform"
+    cmds:
+      - terraform fmt -check -recursive -diff
+      - terraform init -backend=false -input=false >/dev/null 2>&1
+      - terraform validate
+      - echo "[VALIDATE] Terraform OK"
+
+  validate:packer:
+    desc: "Validate Packer templates"
+    dir: "{{.ROOT_DIR}}/{{.PACKER_DIR}}"
+    env:
+      PKR_VAR_hcloud_token: "placeholder"
+    cmds:
+      - packer init .
+      - >-
+        packer validate
+        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
+        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
+        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
+        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
+        .
+      - echo "[VALIDATE] Packer OK"
+
+  validate:kustomize:
+    desc: "Validate Kustomize overlays render without errors"
+    cmds:
+      - kustomize build infra/argocd/envs/dev >/dev/null
+      - kustomize build infra/argocd/envs/prod >/dev/null
+      - echo "[VALIDATE] Kustomize overlays OK"
+
+  validate:manifests:
+    desc: "Validate Kubernetes manifests against API schemas"
+    cmds:
+      - |
+        if command -v kubeconform >/dev/null 2>&1; then
+          kustomize build infra/argocd/envs/dev | kubeconform -strict -ignore-missing-schemas -summary
+          kustomize build infra/argocd/envs/prod | kubeconform -strict -ignore-missing-schemas -summary
+          for f in infra/argocd/apps/*.yaml; do
+            kubeconform -strict -ignore-missing-schemas "$f"
+          done
+          echo "[VALIDATE] Kubernetes manifests OK"
+        else
+          echo "[VALIDATE] kubeconform not installed — skipping manifest validation"
+          echo "[VALIDATE] Install: brew install kubeconform"
+        fi
+
   cluster:fetch-cert:
     desc: "Fetch the Sealed Secrets public cert from the cluster (run once after bootstrap)"
     vars:

@@ -29,13 +29,13 @@ resource "hcloud_firewall" "nat" {
     direction  = "in"
     protocol   = "udp"
     port       = "41641"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "51820"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
 
   # Outbound (all)
@@ -83,12 +83,13 @@ resource "hcloud_firewall" "cp" {
     source_ips = ["10.0.0.0/16"]
   }
 
-  # Kubernetes API (via LB, but also direct for debugging)
+  # Kubernetes API — only reachable from private network + LB.
+  # External access is via Tailscale or the API load balancer (which is also on 10.0.0.0/16).
   rule {
     direction  = "in"
     protocol   = "tcp"
     port       = "6443"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["10.0.0.0/16"]
   }
 
   # etcd peer communication (CP nodes only)
@@ -104,13 +105,13 @@ resource "hcloud_firewall" "cp" {
     direction  = "in"
     protocol   = "udp"
     port       = "41641"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "51820"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
 
   # Outbound (all)
@@ -166,18 +167,18 @@ resource "hcloud_firewall" "worker" {
     source_ips = ["10.0.0.0/16"]
   }
 
-  # HTTP/HTTPS (ingress-nginx on workers)
+  # HTTP/HTTPS (ingress-nginx on workers — IPv6 disabled on all nodes)
   rule {
     direction  = "in"
     protocol   = "tcp"
     port       = "80"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
   rule {
     direction  = "in"
     protocol   = "tcp"
     port       = "443"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
 
   # Tailscale direct + WireGuard fallback
@@ -185,13 +186,13 @@ resource "hcloud_firewall" "worker" {
     direction  = "in"
     protocol   = "udp"
     port       = "41641"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "51820"
-    source_ips = ["0.0.0.0/0", "::/0"]
+    source_ips = ["0.0.0.0/0"]
   }
 
   # Outbound (all)

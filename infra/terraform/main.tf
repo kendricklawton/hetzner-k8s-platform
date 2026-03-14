@@ -135,6 +135,11 @@ resource "random_id" "kubeadm_cert_key" {
   byte_length = 32
 }
 
+# Encryption key for encrypting Secrets at rest in etcd (32-byte base64)
+resource "random_id" "encryption_key" {
+  byte_length = 32
+}
+
 # --- TAILSCALE PRE-AUTH KEYS ---
 resource "tailscale_tailnet_key" "nat" {
   reusable      = false
@@ -361,6 +366,7 @@ resource "hcloud_server" "control_plane_init" {
     csi_version            = var.csi_version
     ingress_nginx_version  = var.ingress_nginx_version
     sealed_secrets_version = var.sealed_secrets_version
+    encryption_key         = random_id.encryption_key.b64_std
   })
 
   lifecycle {
@@ -419,6 +425,7 @@ resource "hcloud_server" "control_plane_join" {
     csi_version            = var.csi_version
     ingress_nginx_version  = var.ingress_nginx_version
     sealed_secrets_version = var.sealed_secrets_version
+    encryption_key         = random_id.encryption_key.b64_std
   })
 
   lifecycle {
@@ -478,6 +485,7 @@ resource "hcloud_server" "worker" {
     csi_version            = ""
     ingress_nginx_version  = ""
     sealed_secrets_version = ""
+    encryption_key         = ""
   })
 
   lifecycle {
