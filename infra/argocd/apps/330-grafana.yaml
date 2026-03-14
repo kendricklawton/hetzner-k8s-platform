@@ -35,6 +35,36 @@ spec:
                 type: loki
                 url: http://loki.observability.svc.cluster.local:3100
                 access: proxy
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: default
+                orgId: 1
+                folder: ""
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+        dashboards:
+          default:
+            node-exporter:
+              gnetId: 1860
+              revision: 37
+              datasource: VictoriaMetrics
+            k8s-cluster:
+              gnetId: 7249
+              revision: 1
+              datasource: VictoriaMetrics
+            k8s-pods:
+              gnetId: 6417
+              revision: 1
+              datasource: VictoriaMetrics
+            cnpg:
+              gnetId: 20417
+              revision: 3
+              datasource: VictoriaMetrics
         persistence:
           enabled: true
           size: 2Gi

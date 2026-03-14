@@ -2,7 +2,7 @@
 # ETCD BACKUP — CronJob
 # =============================================================================
 # Runs etcdctl snapshot save daily at 02:00 UTC on a control-plane node.
-# Retains the last 7 snapshots on the PVC (older ones are pruned automatically).
+# Retains the last 7 snapshots on the PVC, then uploads to GCS for off-cluster durability.
 #
 # How it works:
 #   - hostNetwork: true   → reaches etcd at 127.0.0.1:2379 (loopback)
@@ -36,7 +36,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
 
 ---
-# PVC for storing snapshots — provisioned by the cloud CSI (DO or Hetzner)
+# PVC for storing snapshots — provisioned by the Hetzner CSI driver
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -78,8 +78,8 @@ spec:
               operator: Exists
               effect: NoSchedule
           restartPolicy: OnFailure
-          containers:
-            - name: etcd-backup
+          initContainers:
+            - name: etcd-snapshot
               # Use the same etcd image that kubeadm deploys (k8s 1.32 → etcd 3.5.16)
               image: registry.k8s.io/etcd:3.5.16-0
               env:
@@ -107,13 +107,52 @@ spec:
                   echo "[etcd-backup] Pruning old snapshots (keeping last 7):"
                   ls -t /backup/etcd-snapshot-*.db | tail -n +8 | xargs -r rm -fv
 
-                  echo "[etcd-backup] Done at $(date)"
+                  echo "[etcd-backup] Snapshot complete at $(date)"
               volumeMounts:
                 - name: etcd-certs
                   mountPath: /etc/kubernetes/pki/etcd
                   readOnly: true
                 - name: backup-storage
                   mountPath: /backup
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "256Mi"
+          containers:
+            - name: gcs-upload
+              image: google/cloud-sdk:511.0.0-slim
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+
+                  # Authenticate with GCS service account
+                  gcloud auth activate-service-account --key-file=/etc/gcp/key.json
+
+                  # Find the latest snapshot
+                  LATEST=$(ls -t /backup/etcd-snapshot-*.db | head -1)
+                  echo "[etcd-backup] Uploading ${LATEST} to GCS..."
+
+                  gsutil cp "${LATEST}" gs://${GCS_BUCKET}/
+
+                  echo "[etcd-backup] Upload complete at $(date)"
+              env:
+                - name: GCS_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcp-service-account-secret
+                      key: etcd-bucket-name
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+                  readOnly: true
+                - name: gcp-credentials
+                  mountPath: /etc/gcp
+                  readOnly: true
               resources:
                 requests:
                   cpu: "100m"
@@ -129,3 +168,6 @@ spec:
             - name: backup-storage
               persistentVolumeClaim:
                 claimName: etcd-backup-pvc
+            - name: gcp-credentials
+              secret:
+                secretName: gcp-service-account-secret

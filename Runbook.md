@@ -6,38 +6,43 @@ Operational procedures for the platform. Single-operator context — this is for
 
 ## Cluster Bootstrap
 
+### 0. Set Let's Encrypt email
+```sh
+# Set LETS_ENCRYPT_EMAIL in .env, then:
+task cluster:set-email
+```
+Commit the updated `cluster-issuers.yaml` to Git before deploying.
+
 ### 1. Build golden images (Packer)
 ```sh
-cd infrastructure/packer
-packer build ubuntu.pkr.hcl
+task packer
 ```
-This produces a hardened Ubuntu snapshot in Hetzner. Two image types: `role=k3s-node` and `role=nat-gateway`.
+This produces hardened Ubuntu snapshots in Hetzner. Two image types: `role=k8s-node` and `role=nat-gateway`.
 
 ### 2. Provision infrastructure (Terraform)
 ```sh
-cd infrastructure/terraform/providers/hetzner
+# Dev (Ashburn)
+task plan
+task apply
 
-# Dev
-terraform init -backend-config=... 
-terraform apply -var-file=dev.tfvars
-
-# Prod
-terraform apply -var-file=prod.tfvars
+# Prod (Ashburn)
+task plan:prod
+task apply:prod
 ```
 
 Terraform creates:
 - VPC + subnet
 - NAT gateway server
-- K3s API load balancer + ingress load balancer
-- Control plane servers (1 for dev, 3 for prod) with K3s bootstrap cloud-init
+- API load balancer + ingress load balancer
+- Control plane servers (1 for dev, 3 for prod) with kubeadm bootstrap cloud-init
 - Worker nodes (1 for dev, 3 for prod)
-- Bootstrap manifests injected into `/var/lib/rancher/k3s/server/manifests/` on the init server
+- Bootstrap manifests injected via cloud-init on the init server
 
 ### 3. Connect to cluster
 ```sh
-# Via Tailscale — kubectl config is on the init server
-ssh ubuntu@<tailscale-ip-of-init-server>
-sudo cat /etc/rancher/k3s/k3s.yaml
+# Via Tailscale — kubeconfig is on the init control plane node
+ssh root@<tailscale-ip-of-init-server>
+cat /etc/kubernetes/admin.conf
 ```
 Copy kubeconfig locally and replace `127.0.0.1` with the Tailscale IP of the init server.
 
@@ -75,23 +80,28 @@ argocd app sync <app-name>
 
 ## Sealed Secrets
 
+### Fetch the cluster's public cert (one-time after bootstrap)
+```sh
+task cluster:fetch-cert
+```
+Saves to `keys/sealed-secrets-cert.pem`. This file is gitignored.
+
 ### Seal a new secret
 ```sh
-# Fetch the cluster public key
-kubeseal --fetch-cert \
-  --controller-name=sealed-secrets \
-  --controller-namespace=kube-system > pub-cert.pem
-
-# Seal
-kubectl create secret generic my-secret \
-  --from-literal=key=value \
-  --dry-run=client -o yaml | \
-  kubeseal --cert pub-cert.pem --format yaml > my-secret-sealed.yaml
+task cluster:seal TENANT=observability NAME=grafana-admin-secret KEY=GF_SECURITY_ADMIN_PASSWORD VAL='my-password'
 ```
-Commit `my-secret-sealed.yaml` to Git. Never commit the raw secret.
+Output goes to `tenants/<TENANT>/<NAME>-sealed.yaml`. Copy to the appropriate manifest location and commit.
+
+Optional: specify `DEST=infra/manifests/secrets/my-secret.yaml` to write directly to a target path.
 
 ### Rotate a sealed secret
-Re-seal with the current cluster key and push to Git. ArgoCD syncs it.
+Re-seal with the current cluster cert and push to Git. ArgoCD syncs it.
+
+### Backup the sealing key
+```sh
+task backup:sealed-secrets-key
+```
+Exports the master key from the cluster and uploads to GCS. Run after every bootstrap or key rotation.
 
 ---
 
@@ -99,42 +109,46 @@ Re-seal with the current cluster key and push to Git. ArgoCD syncs it.
 
 ### Connect
 ```sh
-kubectl exec -it -n postgres \
-  $(kubectl get pod -n postgres -l role=primary -o name | head -1) \
+kubectl exec -it -n platform-system \
+  $(kubectl get pod -n platform-system -l role=primary -o name | head -1) \
   -- psql -U platform platform
 ```
 
 ### Manual backup trigger
 ```sh
 kubectl annotate cluster platform-cluster \
-  -n postgres \
+  -n platform-system \
   cnpg.io/immediateBackup=true
 ```
 
 ### Check backup status
 ```sh
-kubectl get backup -n postgres
+kubectl get backup -n platform-system
 ```
 
 ---
 
 ## Deployments
 
-Applications are deployed as ArgoCD `Application` CRs pointing to Helm charts or raw manifests in this repo. To deploy a new app:
+Applications are deployed as ArgoCD `Application` CRs pointing to Helm charts or raw manifests. To deploy a new app:
 
-1. Add Kubernetes manifests (Deployment, Service, Ingress) under `infrastructure/argocd/manifests/apps/<app-name>/`
-2. Add an ArgoCD `Application` CR under `infrastructure/argocd/apps/`
-3. Push to Git — ArgoCD auto-syncs
+1. Add Kubernetes manifests under `infra/manifests/<app-name>/`
+2. Add an ArgoCD `Application` CR under `infra/argocd/apps/`
+3. Add the new app to `infra/argocd/envs/dev/kustomization.yaml` and `infra/argocd/envs/prod/kustomization.yaml`
+4. Push to Git — ArgoCD auto-syncs
 
-For TLS: cert-manager issues Let's Encrypt certificates automatically when an `Ingress` resource has the `cert-manager.io/cluster-issuer: letsencrypt-prod` annotation.
+For TLS: cert-manager issues Let's Encrypt certificates automatically when an `Ingress` resource has the `cert-manager.io/cluster-issuer: letsencrypt` annotation.
 
 ---
 
 ## Teardown
 
 ```sh
-cd infrastructure/terraform/providers/hetzner
-terraform destroy -var-file=dev.tfvars
+# Dev
+task destroy
+
+# Prod
+task destroy:prod
 ```
 This destroys all cloud resources. Sealed Secrets keys are lost — re-sealing all secrets is required on next bootstrap.
 
@@ -142,15 +156,15 @@ This destroys all cloud resources. Sealed Secrets keys are lost — re-sealing a
 
 ## Terraform Resource Names
 
-Pattern: `{env}-{region}-{type}[-{role}][-{index}]`
+Pattern: `{env}-{location}-{type}[-{role}][-{index}]`
 
 ```
-dev-eu-central-nat
-dev-eu-central-net
-dev-eu-central-lb-api
-dev-eu-central-lb-ingress
-dev-eu-central-server-cp-01
-dev-eu-central-server-wk-01
+dev-ash-nat
+dev-ash-net
+dev-ash-lb-api
+dev-ash-lb-ingress
+dev-ash-server-cp-01
+dev-ash-server-wk-01
 ```
 
-`env` and `region` are plain input variables — not derived from provider codes. This keeps the naming convention stable across providers.
+`env` and `location` are plain input variables — not derived from provider codes.

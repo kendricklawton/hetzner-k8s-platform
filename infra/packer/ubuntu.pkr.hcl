@@ -19,6 +19,11 @@
   2. K8s Node:   A heavy-duty worker/control-plane node pre-loaded with
      vanilla Kubernetes (kubeadm/kubelet/kubectl), containerd, gVisor,
      and Helm. No K3s.
+
+  Shared provisioner steps live in scripts/:
+  - base.sh       — apt update/upgrade, common packages, SSH hardening
+  - tailscale.sh  — Tailscale install + state cleanup
+  - cleanup.sh    — apt clean, SSH host key removal, cloud-init reset
   =============================================================================
 */
 
@@ -121,37 +126,22 @@ build {
   name    = "nat"
   sources = ["source.hcloud.nat_ash", "source.hcloud.nat_hil"]
 
+  # --- SHARED: Base packages + SSH hardening ---
   provisioner "shell" {
-    inline = [
-      "echo 'Waiting for cloud-init to finish...'",
-      "/usr/bin/cloud-init status --wait"
-    ]
+    script = "${path.root}/scripts/base.sh"
   }
 
-  # --- PACKAGES & OS CONFIG ---
+  # --- NAT-SPECIFIC: iptables-persistent ---
   provisioner "shell" {
     environment_vars = ["DEBIAN_FRONTEND=noninteractive"]
     inline = [
       "echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections",
       "echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections",
-      "apt-get update -y",
-      "apt-get upgrade -y",
-      "apt-get install -y iptables-persistent curl jq fail2ban unattended-upgrades",
+      "apt-get install -y iptables-persistent",
     ]
   }
 
-  # --- SECURITY HARDENING ---
-  provisioner "shell" {
-    inline = [
-      "systemctl enable fail2ban",
-      "systemctl enable unattended-upgrades",
-      "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config",
-      "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config",
-      "systemctl restart ssh || systemctl restart sshd"
-    ]
-  }
-
-  # --- KERNEL TUNING FOR HIGH THROUGHPUT NAT ---
+  # --- NAT-SPECIFIC: Kernel tuning for high throughput NAT ---
   provisioner "shell" {
     inline = [
       "cat << 'EOF' > /etc/sysctl.d/99-nat-tuning.conf",
@@ -166,7 +156,7 @@ build {
     ]
   }
 
-  # --- FIREWALL RULES ---
+  # --- NAT-SPECIFIC: Firewall rules ---
   provisioner "shell" {
     inline = [
       "cat << 'EOF' > /etc/iptables/rules.v4",
@@ -192,23 +182,14 @@ build {
     ]
   }
 
-  # --- TAILSCALE ---
+  # --- SHARED: Tailscale ---
   provisioner "shell" {
-    inline = [
-      "curl -fsSL https://tailscale.com/install.sh | sh",
-      "systemctl enable tailscaled"
-    ]
+    script = "${path.root}/scripts/tailscale.sh"
   }
 
-  # --- CLEANUP ---
+  # --- SHARED: Cleanup ---
   provisioner "shell" {
-    inline = [
-      "apt-get clean",
-      "rm -rf /var/lib/apt/lists/*",
-      "rm -f /etc/netplan/50-cloud-init.yaml",
-      "cloud-init clean --logs --seed",
-      "truncate -s 0 /etc/machine-id /var/lib/dbus/machine-id /etc/hostname"
-    ]
+    script = "${path.root}/scripts/cleanup.sh"
   }
 }
 
@@ -217,34 +198,22 @@ build {
   name    = "k8s"
   sources = ["source.hcloud.k8s_ash", "source.hcloud.k8s_hil"]
 
+  # --- SHARED: Base packages + SSH hardening ---
   provisioner "shell" {
-    inline = [
-      "echo 'Waiting for cloud-init to finish...'",
-      "/usr/bin/cloud-init status --wait"
-    ]
+    script = "${path.root}/scripts/base.sh"
   }
 
-  # --- PACKAGES ---
+  # --- K8S-SPECIFIC: Additional packages ---
   provisioner "shell" {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",
-      "apt-get update && apt-get upgrade -y",
-      "apt-get install -y ca-certificates curl wget gpg apt-transport-https python3 wireguard logrotate open-iscsi nfs-common cryptsetup systemd-timesyncd fping jq",
+      "apt-get install -y gpg apt-transport-https python3 wireguard logrotate open-iscsi nfs-common cryptsetup systemd-timesyncd fping",
       "systemctl enable systemd-timesyncd",
       "timedatectl set-ntp true"
     ]
   }
 
-  # --- SECURITY HARDENING ---
-  provisioner "shell" {
-    inline = [
-      "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config",
-      "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config",
-      "systemctl restart ssh || systemctl restart sshd"
-    ]
-  }
-
-  # --- CONTAINERD ---
+  # --- K8S-SPECIFIC: Containerd ---
   provisioner "shell" {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",
@@ -256,7 +225,7 @@ build {
     ]
   }
 
-  # --- GVISOR ---
+  # --- K8S-SPECIFIC: gVisor ---
   provisioner "shell" {
     inline = [
       "ARCH=$(uname -m)",
@@ -277,7 +246,7 @@ build {
     ]
   }
 
-  # --- KUBERNETES ---
+  # --- K8S-SPECIFIC: Kubernetes ---
   provisioner "shell" {
     inline = [
       "K8S_VERSION='${var.kubernetes_version}'",
@@ -291,37 +260,36 @@ build {
     ]
   }
 
-  # --- CRICTL ---
+  # --- K8S-SPECIFIC: crictl (SHA256 verified) ---
   provisioner "shell" {
     inline = [
       "K8S_VERSION='${var.kubernetes_version}'",
       "CRICTL_VERSION=$(echo $K8S_VERSION | sed 's/^v//')",
       "ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')",
-      "wget -q https://github.com/kubernetes-sigs/cri-tools/releases/download/v$${CRICTL_VERSION}/crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz",
+      "CRICTL_URL=https://github.com/kubernetes-sigs/cri-tools/releases/download/v$${CRICTL_VERSION}",
+      "wget -q $${CRICTL_URL}/crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz",
+      "wget -q $${CRICTL_URL}/crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
+      "sha256sum -c crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
       "tar -xzf crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz -C /usr/local/bin",
-      "rm -f crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz",
+      "rm -f crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
       "chmod +x /usr/local/bin/crictl",
       "printf 'runtime-endpoint: unix:///run/containerd/containerd.sock\\nimage-endpoint: unix:///run/containerd/containerd.sock\\n' > /etc/crictl.yaml"
     ]
   }
 
-  # --- HELM ---
+  # --- K8S-SPECIFIC: Helm ---
   provisioner "shell" {
     inline = [
-      "curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
+      "curl --proto =https -fsSL https://raw.githubusercontent.com/helm/helm/v3.17.0/scripts/get-helm-3 | VERIFY_CHECKSUM=true bash"
     ]
   }
 
-  # --- TAILSCALE ---
+  # --- SHARED: Tailscale ---
   provisioner "shell" {
-    inline = [
-      "curl -fsSL https://tailscale.com/install.sh | sh",
-      "systemctl enable tailscaled",
-      "rm -f /var/lib/tailscale/tailscaled.state"
-    ]
+    script = "${path.root}/scripts/tailscale.sh"
   }
 
-  # --- KERNEL TUNING ---
+  # --- K8S-SPECIFIC: Kernel tuning ---
   provisioner "shell" {
     inline = [
       "modprobe br_netfilter",
@@ -336,7 +304,7 @@ build {
     ]
   }
 
-  # --- TRIVY SECURITY SCAN ---
+  # --- K8S-SPECIFIC: Trivy security scan ---
   provisioner "shell" {
     inline = [
       "wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -",
@@ -346,7 +314,7 @@ build {
     ]
   }
 
-  # --- LOG ROTATION ---
+  # --- K8S-SPECIFIC: Log rotation ---
   provisioner "shell" {
     inline = [
       "echo '/var/log/tailscale-join.log {'           >  /etc/logrotate.d/k8s-bootstrap",
@@ -362,14 +330,8 @@ build {
     ]
   }
 
-  # --- CLEANUP ---
+  # --- SHARED: Cleanup ---
   provisioner "shell" {
-    inline = [
-      "apt-get clean",
-      "rm -rf /var/lib/apt/lists/*",
-      "rm -f /etc/netplan/50-cloud-init.yaml",
-      "cloud-init clean --logs --seed",
-      "truncate -s 0 /etc/machine-id /var/lib/dbus/machine-id /etc/hostname"
-    ]
+    script = "${path.root}/scripts/cleanup.sh"
   }
 }

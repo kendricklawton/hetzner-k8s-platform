@@ -32,9 +32,24 @@ spec:
           spec:
             scrapeInterval: 30s
         vmalert:
-          enabled: false
+          enabled: true
+          spec:
+            evaluationInterval: 30s
+          notifiers:
+            - selector:
+                namespaceSelector:
+                  matchNames:
+                    - observability
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: alertmanager
         alertmanager:
-          enabled: false
+          enabled: true
+          spec:
+            configSecret: alertmanager-config
+        # kube-state-metrics — pod/deployment/node status metrics
+        kubeStateMetrics:
+          enabled: true
         # Built-in scraping for k8s components
         kubelet:
           enabled: true

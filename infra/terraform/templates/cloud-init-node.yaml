@@ -1,0 +1,514 @@
+#cloud-config
+hostname: ${hostname}
+manage_etc_hosts: true
+ssh_deletekeys: true
+ssh_genkeytypes: [rsa, ecdsa, ed25519]
+
+write_files:
+  # NETPLAN CONFIGURATION
+  - path: /etc/netplan/60-private-net.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          private:
+            match:
+              name: "e*"
+            dhcp4: true
+            nameservers:
+              addresses: [1.1.1.1, 8.8.8.8]
+            routes:
+              - to: 0.0.0.0/0
+                via: 10.0.0.1
+                on-link: true
+
+%{ if role == "cp_init" || role == "cp_join" ~}
+  # KUBERNETES AUDIT POLICY
+  - path: /etc/kubernetes/audit-policy.yaml
+    permissions: "0600"
+    content: |
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+      - level: Metadata
+
+  # KUBEADM CONFIG — init vs join handled by role
+  - path: /etc/kubernetes/kubeadm-config.yaml
+    permissions: "0600"
+    owner: root:root
+    content: |
+%{ if role == "cp_init" ~}
+      ---
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: InitConfiguration
+      bootstrapTokens:
+        - token: "${kubeadm_token}"
+          ttl: "0"
+      certificateKey: "${kubeadm_cert_key}"
+      nodeRegistration:
+        name: "${hostname}"
+        criSocket: "unix:///run/containerd/containerd.sock"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: "external"
+          - name: provider-id
+            value: "__HCLOUD_PROVIDER_ID__"
+%{ else ~}
+      ---
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: JoinConfiguration
+      discovery:
+        bootstrapToken:
+          apiServerEndpoint: "${kubernetes_api_lb_ip}:6443"
+          token: "${kubeadm_token}"
+          unsafeSkipCAVerification: true
+      nodeRegistration:
+        name: "${hostname}"
+        criSocket: "unix:///run/containerd/containerd.sock"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: "external"
+      controlPlane:
+        certificateKey: "${kubeadm_cert_key}"
+%{ endif ~}
+      ---
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: ClusterConfiguration
+      controlPlaneEndpoint: "${kubernetes_api_lb_ip}:6443"
+      apiServer:
+        extraArgs:
+          - name: audit-policy-file
+            value: /etc/kubernetes/audit-policy.yaml
+          - name: audit-log-path
+            value: /var/log/kubernetes/audit.log
+          - name: audit-log-maxage
+            value: "7"
+          - name: audit-log-maxbackup
+            value: "3"
+          - name: audit-log-maxsize
+            value: "10"
+        extraVolumes:
+          - name: audit-policy
+            hostPath: /etc/kubernetes/audit-policy.yaml
+            mountPath: /etc/kubernetes/audit-policy.yaml
+            readOnly: true
+          - name: audit-log
+            hostPath: /var/log/kubernetes
+            mountPath: /var/log/kubernetes
+            readOnly: false
+        certSANs:
+          - "${hostname}"
+          - "${kubernetes_api_lb_ip}"
+          - "${node_private_ip}"
+          - "127.0.0.1"
+          - "__TAILSCALE_IP__"
+      networking:
+        podSubnet: "10.244.0.0/16"
+        serviceSubnet: "10.96.0.0/12"
+      etcd:
+        local:
+          dataDir: /var/lib/etcd
+      ---
+      apiVersion: kubelet.config.k8s.io/v1beta1
+      kind: KubeletConfiguration
+      cgroupDriver: systemd
+      containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
+
+  # HCLOUD CCM + CSI SECRET: applied by bootstrap script after kubeadm init
+  # Uses a read-only + volumes scoped token, NOT the full Terraform API token.
+  - path: /etc/kubernetes/hcloud-secret.yaml
+    permissions: "0600"
+    owner: root:root
+    content: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: hcloud
+        namespace: kube-system
+      stringData:
+        token: "${hcloud_token_readonly}"
+        network: "${hcloud_network_name}"
+
+  # ARGOCD ROOT APP: applied by bootstrap script after ArgoCD is running.
+  # Points at the env-specific Kustomize overlay (infra/argocd/envs/{env}).
+  # This is the one resource ArgoCD cannot self-heal — it bootstraps everything else.
+  - path: /etc/kubernetes/root-app.yaml
+    permissions: "0644"
+    owner: root:root
+    content: |
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: root-app
+        namespace: argocd
+      spec:
+        project: default
+        source:
+          repoURL: ${git_repo_url}
+          targetRevision: HEAD
+          path: ${argocd_apps_path}
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: argocd
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+%{ endif ~}
+
+  # NODE BOOTSTRAP SCRIPT
+  - path: /usr/local/bin/kubeadm-bootstrap.sh
+    permissions: "0700"
+    owner: root:root
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      LOG="/var/log/k8s-bootstrap.log"
+      exec > >(tee -a "$LOG") 2>&1
+%{ if role == "worker" ~}
+      echo "=== K8s Worker Bootstrap Started at $(date) ==="
+%{ else ~}
+      echo "=== K8s Control Plane Bootstrap Started at $(date) ==="
+%{ endif ~}
+
+      # -------------------------------------------------------
+      # 1. SDN routing — metadata + default via NAT gateway
+      # -------------------------------------------------------
+      echo "[Bootstrap] Ensuring SDN routing paths..."
+      DEFAULT_DEV=$(ip -4 route show to default | awk '{print $5}' | head -1)
+      if [ -n "$DEFAULT_DEV" ]; then
+        ip route replace 169.254.169.254 via ${network_gateway} dev "$DEFAULT_DEV" onlink || true
+        ip route replace default via ${network_gateway} dev "$DEFAULT_DEV" onlink || true
+      else
+        echo "[WARN] No default route device found, skipping route setup"
+      fi
+
+      # -------------------------------------------------------
+      # 2. Wait for Hetzner metadata service → get instance ID
+      # -------------------------------------------------------
+      echo "[Bootstrap] Waiting for Hetzner metadata service..."
+      HCLOUD_ID=""
+      for i in $(seq 1 30); do
+        HCLOUD_ID=$(curl -sf -m 3 http://169.254.169.254/hetzner/v1/metadata/instance-id 2>/dev/null || true)
+        if [ -n "$HCLOUD_ID" ]; then
+          echo "[Bootstrap] Hetzner instance ID: $HCLOUD_ID"
+          break
+        fi
+        [ "$i" -eq 30 ] && echo "[FATAL] Metadata service unreachable after 60s"
+        sleep 2
+      done
+      if [ -z "$HCLOUD_ID" ]; then
+        echo "[FATAL] Cannot proceed without Hetzner instance ID — CCM/CSI will fail"
+        exit 1
+      fi
+
+      # -------------------------------------------------------
+      # 3. Wait for Tailscale IP
+      # -------------------------------------------------------
+      echo "[Bootstrap] Waiting for Tailscale IP..."
+      TS_IP=""
+      for i in $(seq 1 30); do
+        TS_IP=$(tailscale ip -4 2>/dev/null || true)
+        if [ -n "$TS_IP" ]; then
+          echo "[Bootstrap] Tailscale IP acquired: $TS_IP"
+          break
+        fi
+        echo "[Bootstrap] Tailscale not ready yet (attempt $i/30)..."
+        sleep 5
+      done
+      [ -z "$TS_IP" ] && echo "[WARN] Tailscale IP not available"
+
+%{ if role == "cp_init" ~}
+      # -------------------------------------------------------
+      # 4. Patch kubeadm config with runtime values
+      # -------------------------------------------------------
+      echo "[Bootstrap] Patching kubeadm config with runtime values..."
+      mkdir -p /var/log/kubernetes
+
+      # Replace placeholders with runtime values (deterministic, no YAML manipulation)
+      sed -i "s|__HCLOUD_PROVIDER_ID__|hcloud://$HCLOUD_ID|" /etc/kubernetes/kubeadm-config.yaml
+      if [ -n "$TS_IP" ]; then
+        sed -i "s|__TAILSCALE_IP__|$TS_IP|" /etc/kubernetes/kubeadm-config.yaml
+      else
+        sed -i "/__TAILSCALE_IP__/d" /etc/kubernetes/kubeadm-config.yaml
+      fi
+
+      # -------------------------------------------------------
+      # 5. kubeadm INIT
+      # -------------------------------------------------------
+      echo "[Bootstrap] Running kubeadm init..."
+      kubeadm init \
+        --config /etc/kubernetes/kubeadm-config.yaml \
+        --skip-phases=addon/kube-proxy \
+        --upload-certs \
+        --ignore-preflight-errors=NumCPU
+
+      export KUBECONFIG=/etc/kubernetes/admin.conf
+      mkdir -p /root/.kube
+      cp /etc/kubernetes/admin.conf /root/.kube/config
+
+      # -------------------------------------------------------
+      # 6. Helm retry helper
+      # -------------------------------------------------------
+      helm_retry() {
+        local max_attempts=5
+        local delay=15
+        for attempt in $(seq 1 $max_attempts); do
+          if "$@"; then
+            return 0
+          fi
+          echo "[Bootstrap] Helm command failed (attempt $attempt/$max_attempts), retrying in ${delay}s..."
+          sleep $delay
+        done
+        echo "[FATAL] Helm command failed after $max_attempts attempts: $*"
+        return 1
+      }
+
+      # -------------------------------------------------------
+      # 7. Validate MTU + Install Cilium (replaces kube-proxy)
+      # -------------------------------------------------------
+      # Verify the interface MTU matches the configured Cilium MTU
+      IFACE_MTU=$(ip -o link show dev eth0 2>/dev/null | grep -oP 'mtu \K[0-9]+' || echo "unknown")
+      CONFIGURED_MTU="${hcloud_mtu}"
+      if [ "$IFACE_MTU" != "unknown" ] && [ "$IFACE_MTU" != "$CONFIGURED_MTU" ]; then
+        echo "[WARN] MTU mismatch: interface eth0 has MTU $IFACE_MTU but Cilium configured with $CONFIGURED_MTU"
+        echo "[WARN] This may cause packet fragmentation or drops on large payloads"
+      else
+        echo "[Bootstrap] MTU validated: $IFACE_MTU (matches configured $CONFIGURED_MTU)"
+      fi
+
+      # BOOTSTRAP-ONLY COMPONENTS: Cilium, CCM, CSI, Sealed Secrets, and ArgoCD
+      # are installed here (not via ArgoCD) because ArgoCD itself depends on
+      # Cilium (networking), CCM (cloud routes), and CSI (storage) to function.
+      # Managing them via ArgoCD would create circular dependencies — if ArgoCD
+      # breaks Cilium during a sync, it loses network access and can't self-heal.
+      # Versions are pinned in Taskfile.yml. Upgrades require manual helm commands.
+      #
+      # NOTE: routingMode=native requires Hetzner CCM (step 9) to advertise
+      # pod CIDR routes. Safe because: (1) init node has no cross-node traffic,
+      # (2) cloud-provider=external taint blocks workloads until CCM inits,
+      # (3) join nodes arrive after CCM is running.
+      echo "[Bootstrap] Installing Cilium ${cilium_version}..."
+      helm_retry helm repo add cilium https://helm.cilium.io/ --force-update
+      helm_retry helm install cilium cilium/cilium \
+        --version "${cilium_version}" \
+        --namespace kube-system \
+        --set k8sServiceHost="${kubernetes_api_lb_ip}" \
+        --set k8sServicePort=6443 \
+        --set kubeProxyReplacement=true \
+        --set mtu=${hcloud_mtu} \
+        --set routingMode=native \
+        --set autoDirectNodeRoutes=false \
+        --set ipv4NativeRoutingCIDR="10.0.0.0/8" \
+        --set endpointRoutes.enabled=true \
+        --set ipam.mode=kubernetes \
+        --set operator.replicas=1 \
+        --set hubble.enabled=true \
+        --set hubble.relay.enabled=true \
+        --set hubble.ui.enabled=false
+
+      echo "[Bootstrap] Waiting for Cilium to be ready..."
+      kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
+
+      # -------------------------------------------------------
+      # 8. Apply Hetzner cloud secret (required by CCM + CSI)
+      # -------------------------------------------------------
+      echo "[Bootstrap] Applying Hetzner cloud secret..."
+      kubectl apply -f /etc/kubernetes/hcloud-secret.yaml
+
+      # -------------------------------------------------------
+      # 9. Install Hetzner CCM
+      # -------------------------------------------------------
+      echo "[Bootstrap] Installing Hetzner CCM ${ccm_version}..."
+      helm_retry helm repo add hcloud https://charts.hetzner.cloud --force-update
+      helm_retry helm install hcloud-cloud-controller-manager hcloud/hcloud-cloud-controller-manager \
+        --version "${ccm_version}" \
+        --namespace kube-system \
+        --set networking.enabled=true \
+        --set networking.clusterCIDR="10.244.0.0/16"
+
+      # -------------------------------------------------------
+      # 10. Install Hetzner CSI
+      # -------------------------------------------------------
+      echo "[Bootstrap] Installing Hetzner CSI ${csi_version}..."
+      helm_retry helm install hcloud-csi hcloud/hcloud-csi \
+        --version "${csi_version}" \
+        --namespace kube-system
+
+      # -------------------------------------------------------
+      # 11. Install Sealed Secrets
+      # -------------------------------------------------------
+      echo "[Bootstrap] Installing Sealed Secrets ${sealed_secrets_version}..."
+      helm_retry helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets --force-update
+      helm_retry helm install sealed-secrets sealed-secrets/sealed-secrets \
+        --version "${sealed_secrets_version}" \
+        --namespace kube-system \
+        --set fullnameOverride=sealed-secrets
+
+      # -------------------------------------------------------
+      # 12. Install ArgoCD (bootstraps GitOps)
+      # -------------------------------------------------------
+      echo "[Bootstrap] Installing ArgoCD ${argocd_version}..."
+      helm_retry helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      helm_retry helm install argocd argo/argo-cd \
+        --version "${argocd_version}" \
+        --namespace argocd \
+        --set server.insecure=true
+
+      echo "[Bootstrap] Waiting for ArgoCD server to be ready..."
+      kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
+
+      # -------------------------------------------------------
+      # 12. Apply root ArgoCD app (takes over from here)
+      # -------------------------------------------------------
+      echo "[Bootstrap] Applying ArgoCD root application..."
+      kubectl apply -f /etc/kubernetes/root-app.yaml
+%{ endif ~}
+
+%{ if role == "cp_join" ~}
+      # -------------------------------------------------------
+      # 4. Patch kubeadm config with runtime values
+      # -------------------------------------------------------
+      echo "[Bootstrap] Patching kubeadm config with runtime values..."
+      mkdir -p /var/log/kubernetes
+
+      # Replace placeholders with runtime values
+      if [ -n "$TS_IP" ]; then
+        sed -i "s|__TAILSCALE_IP__|$TS_IP|" /etc/kubernetes/kubeadm-config.yaml
+      else
+        sed -i "/__TAILSCALE_IP__/d" /etc/kubernetes/kubeadm-config.yaml
+      fi
+
+      # -------------------------------------------------------
+      # 5. Wait for API server + kubeadm JOIN (control plane)
+      # -------------------------------------------------------
+      echo "[Bootstrap] Waiting for API server at ${kubernetes_api_lb_ip}:6443..."
+      for i in $(seq 1 60); do
+        if curl -sk --connect-timeout 3 "https://${kubernetes_api_lb_ip}:6443/healthz" >/dev/null 2>&1; then
+          echo "[Bootstrap] API server is reachable"
+          break
+        fi
+        [ "$i" -eq 60 ] && echo "[ERROR] API server not reachable after 5 minutes — joining anyway"
+        sleep 5
+      done
+
+      echo "[Bootstrap] Running kubeadm join (control plane)..."
+      kubeadm join --config /etc/kubernetes/kubeadm-config.yaml \
+        --ignore-preflight-errors=NumCPU
+
+      export KUBECONFIG=/etc/kubernetes/admin.conf
+      mkdir -p /root/.kube
+      cp /etc/kubernetes/admin.conf /root/.kube/config
+%{ endif ~}
+
+%{ if role == "worker" ~}
+      # -------------------------------------------------------
+      # 4. Wait for API server + kubeadm JOIN (worker)
+      # -------------------------------------------------------
+      echo "[Bootstrap] Waiting for API server at ${kubernetes_api_lb_ip}:6443..."
+      for i in $(seq 1 60); do
+        if curl -sk --connect-timeout 3 "https://${kubernetes_api_lb_ip}:6443/healthz" >/dev/null 2>&1; then
+          echo "[Bootstrap] API server is reachable"
+          break
+        fi
+        [ "$i" -eq 60 ] && echo "[ERROR] API server not reachable after 5 minutes — joining anyway"
+        sleep 5
+      done
+
+      echo "[Bootstrap] Running kubeadm join (worker)..."
+      kubeadm join "${kubernetes_api_lb_ip}:6443" \
+        --token "${kubeadm_token}" \
+        --discovery-token-unsafe-skip-ca-verification \
+        --node-name "${hostname}" \
+        --cri-socket "unix:///run/containerd/containerd.sock" \
+        --ignore-preflight-errors=NumCPU
+%{ endif ~}
+
+      # -------------------------------------------------------
+      # Final: Verify node health
+      # -------------------------------------------------------
+%{ if role != "worker" ~}
+      echo "[Bootstrap] Verifying cluster health..."
+      for i in $(seq 1 20); do
+        if kubectl get nodes 2>/dev/null | grep -q "${hostname}"; then
+          echo "=== K8s Control Plane Bootstrap Complete at $(date) ==="
+          kubectl get nodes
+          exit 0
+        fi
+        sleep 5
+      done
+      echo "[ERROR] Node ${hostname} not found in cluster after bootstrap"
+      journalctl -u kubelet --no-pager --since "5min ago" | tail -50
+      exit 1
+%{ else ~}
+      echo "[Bootstrap] Verifying worker node readiness..."
+
+      # Wait for kubelet to be active first
+      for i in $(seq 1 12); do
+        if systemctl is-active --quiet kubelet; then
+          echo "[Bootstrap] kubelet service is active"
+          break
+        fi
+        [ "$i" -eq 12 ] && { echo "[FATAL] kubelet not active after 60s"; journalctl -u kubelet --no-pager --since "2min ago" | tail -30; exit 1; }
+        sleep 5
+      done
+
+      # Poll API server for this node's Ready condition using the bootstrap token
+      echo "[Bootstrap] Polling API server for node Ready status..."
+      for i in $(seq 1 60); do
+        NODE_STATUS=$(curl -sk \
+          -H "Authorization: Bearer ${kubeadm_token}" \
+          "https://${kubernetes_api_lb_ip}:6443/api/v1/nodes/${hostname}" 2>/dev/null \
+          | python3 -c "
+import sys, json
+try:
+    node = json.load(sys.stdin)
+    for c in node.get('status',{}).get('conditions',[]):
+        if c['type'] == 'Ready':
+            print(c['status'])
+            break
+except: pass
+" 2>/dev/null || true)
+        if [ "$NODE_STATUS" = "True" ]; then
+          echo "=== K8s Worker Bootstrap Complete at $(date) ==="
+          exit 0
+        fi
+        [ "$((i % 10))" -eq 0 ] && echo "[Bootstrap] Node not Ready yet (attempt $i/60)..."
+        sleep 5
+      done
+      echo "[ERROR] Worker node ${hostname} not Ready after 5 minutes"
+      journalctl -u kubelet --no-pager --since "5min ago" | tail -50
+      exit 1
+%{ endif ~}
+
+runcmd:
+  - netplan generate
+  - netplan apply
+  - sleep 5
+  - systemctl restart systemd-resolved || true
+
+  # Join Tailscale — wait for socket, then retry until successful
+  - |
+    LOG="/var/log/tailscale-join.log"
+    echo "Waiting for tailscaled socket..." >> $LOG
+    for i in $(seq 1 24); do
+      [ -S /run/tailscale/tailscaled.sock ] && break
+      sleep 5
+    done
+    echo "tailscaled socket ready, joining..." >> $LOG
+%{ if role == "worker" ~}
+    until tailscale up \
+      --authkey=${tailscale_auth_key} \
+      --ssh --hostname=${hostname} --advertise-tags="tag:k8s-worker" --reset >> $LOG 2>&1; do
+%{ else ~}
+    until tailscale up \
+      --authkey=${tailscale_auth_key} \
+      --ssh --hostname=${hostname} --advertise-tags="tag:k8s-cp" --reset >> $LOG 2>&1; do
+%{ endif ~}
+      sleep 5
+    done
+    echo "Tailscale joined successfully" >> $LOG
+
+  - /usr/local/bin/kubeadm-bootstrap.sh

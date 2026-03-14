@@ -12,23 +12,22 @@ vars:
   HCLOUD_NAT_TYPE: "cpx11"
   HCLOUD_CP_SERVER_TYPE: "cpx31"
   HCLOUD_WORKER_SERVER_TYPE: "cpx31"
-  HETZNER_CCM_VERSION: "1.29.1"
+  HETZNER_CCM_VERSION: "1.30.1"
   HETZNER_CSI_VERSION: "2.6.0"
 
   PROJECT_NAME: "hetzner-platform"
-  PLATFORM_DATABASE_URL: "{{.PLATFORM_DATABASE_URL}}"
 
-  # SHARED COMPONENT VERSIONS
+  # BOOTSTRAP COMPONENT VERSIONS (installed via cloud-init, not ArgoCD)
+  # Cilium, CCM, CSI, Sealed Secrets, and ArgoCD are installed during
+  # cluster bootstrap because ArgoCD depends on them to function.
+  # They are intentionally NOT managed by ArgoCD to avoid circular
+  # dependencies (ArgoCD needs Cilium networking to operate).
+  # ArgoCD-managed component versions live in infra/argocd/apps/*.yaml.
   KUBERNETES_VERSION: "v1.32.3"
   CILIUM_VERSION: "1.17.1"
   INGRESS_NGINX_VERSION: "4.14.3"
   SEALED_SECRETS_VERSION: "2.18.1"
-  CERT_MANAGER_VERSION: "v1.14.0"
   ARGOCD_VERSION: "7.8.23"
-  FLUENT_BIT_VERSION: "3.0.0"
-  VM_VERSION: "0.14.0"
-  LOKI_VERSION: "5.43.3"
-  GRAFANA_VERSION: "7.3.0"
 
 tasks:
   _packer_build:
@@ -68,25 +67,24 @@ tasks:
 
   _tf:
     internal: true
-    dir: "{{.ROOT_DIR}}/infrastructure/terraform/providers/hetzner"
+    dir: "{{.ROOT_DIR}}/infra/terraform"
     vars:
       TFSTATE_BUCKET: "{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}"
     env:
       GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}.json"
-      HCLOUD_TOKEN: "{{.HCLOUD_TOKEN}}"
       TF_VAR_token: "{{.HCLOUD_TOKEN}}"
+      TF_VAR_token_readonly: "{{.HCLOUD_TOKEN_READONLY}}"
       TF_VAR_env: "{{.CLOUD_ENV}}"
-      TF_VAR_region: "{{.LOCATION}}"
+      TF_VAR_location: "{{.LOCATION}}"
+      TF_VAR_network_zone: "{{.NETWORK_ZONE}}"
       TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
       TF_VAR_ssh_key_name: "{{.HETZNER_SSH_KEY_NAME}}"
-      TF_VAR_location: "{{.LOCATION}}"
       TF_VAR_cp_server_type: "{{.HCLOUD_CP_SERVER_TYPE}}"
       TF_VAR_worker_server_type: "{{.HCLOUD_WORKER_SERVER_TYPE}}"
       TF_VAR_nat_gateway_type: "{{.HCLOUD_NAT_TYPE}}"
       TF_VAR_load_balancer_type: "{{.HCLOUD_LB_TYPE}}"
-      TF_VAR_tailscale_auth_nat_key: "{{.TAILSCALE_AUTH_NAT_KEY}}"
-      TF_VAR_tailscale_auth_cp_key: "{{.TAILSCALE_AUTH_CP_KEY}}"
-      TF_VAR_tailscale_auth_worker_key: "{{.TAILSCALE_AUTH_WORKER_KEY}}"
+      TF_VAR_tailscale_api_key: "{{.TAILSCALE_API_KEY}}"
+      TF_VAR_tailscale_tailnet: "{{.TAILSCALE_TAILNET}}"
       TF_VAR_kubernetes_version: "{{.KUBERNETES_VERSION}}"
       TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
       TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
@@ -106,6 +104,7 @@ tasks:
         vars:
           {
             LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
             CLOUD_ENV: "dev",
             CMD: "plan",
             ARGS: "-out=tfplan",
@@ -118,6 +117,7 @@ tasks:
         vars:
           {
             LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
             CLOUD_ENV: "dev",
             CMD: "apply",
             ARGS: "-auto-approve tfplan",
@@ -130,115 +130,214 @@ tasks:
         vars:
           {
             LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
             CLOUD_ENV: "dev",
             CMD: "destroy",
             ARGS: "-auto-approve",
           }
 
   output:
-    desc: "Show Hetzner Terraform outputs"
+    desc: "Show Hetzner Terraform outputs (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", CLOUD_ENV: "dev", CMD: "output", ARGS: "" }
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", CMD: "output", ARGS: "" }
+
+  # --- PROD: Hetzner Ashburn ---
+  plan:prod:
+    desc: "Plan Hetzner Ashburn (Prod)"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            CMD: "plan",
+            ARGS: "-out=tfplan",
+          }
+
+  apply:prod:
+    desc: "Apply Hetzner Ashburn (Prod)"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            CMD: "apply",
+            ARGS: "-auto-approve tfplan",
+          }
+
+  destroy:prod:
+    desc: "Destroy Hetzner Ashburn (Prod)"
+    cmds:
+      - task: _tf
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            CMD: "destroy",
+            ARGS: "-auto-approve",
+          }
+
+  output:prod:
+    desc: "Show Hetzner Terraform outputs (Prod)"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", CMD: "output", ARGS: "" }
+
+  infra:bootstrap:
+    desc: "Create GCS state bucket with versioning enabled (run once per environment)"
+    vars:
+      TFSTATE_BUCKET: "{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}"
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/{{.PROJECT_NAME}}-tfstate-{{.CLOUD_ENV}}.json"
+    cmds:
+      - echo "[BOOTSTRAP] Creating GCS state bucket {{.TFSTATE_BUCKET}}..."
+      - gcloud storage buckets create gs://{{.TFSTATE_BUCKET}} --location={{.GCP_REGION}} --uniform-bucket-level-access 2>/dev/null || echo "Bucket already exists"
+      - gcloud storage buckets update gs://{{.TFSTATE_BUCKET}} --versioning
+      - echo "[BOOTSTRAP] Verified versioning enabled on gs://{{.TFSTATE_BUCKET}}"
+
+  cluster:fetch-cert:
+    desc: "Fetch the Sealed Secrets public cert from the cluster (run once after bootstrap)"
+    vars:
+      CP_HOSTNAME:
+        sh: cd infra/terraform && terraform output -raw control_plane_init_hostname
+    cmds:
+      - >-
+        ssh root@{{.CP_HOSTNAME}}
+        "export KUBECONFIG=/etc/kubernetes/admin.conf;
+        kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system"
+        > keys/sealed-secrets-cert.pem
+      - echo "Public cert saved to keys/sealed-secrets-cert.pem"
 
   cluster:seal:
-    desc: "Create and seal a secret via SSH on the Hetzner cluster"
+    desc: "Seal a secret locally using the cluster's public cert"
     requires:
       vars: [TENANT, NAME, KEY, VAL]
     vars:
-      CP_HOSTNAME:
-        sh: cd infrastructure/terraform/providers/hetzner && terraform output -raw control_plane_init_hostname
+      DEST: ""
+      OUTPUT_PATH: '{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}'
+    preconditions:
+      - sh: test -f keys/sealed-secrets-cert.pem
+        msg: "No public cert found. Run 'task cluster:fetch-cert' first."
     cmds:
-      - mkdir -p tenants/{{.TENANT}}
+      - '{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}'
       - >-
-        ssh root@{{.CP_HOSTNAME}} "
-        export KUBECONFIG=/etc/kubernetes/admin.conf;
+        kubectl create secret generic {{.NAME}} -n {{.TENANT}}
+        --from-literal={{.KEY}}='{{.VAL}}'
+        --dry-run=client -o yaml |
+        kubeseal --cert keys/sealed-secrets-cert.pem
+        --controller-name=sealed-secrets
+        --controller-namespace=kube-system
+        -o yaml > {{.OUTPUT_PATH}}
+      - echo "Sealed secret written to {{.OUTPUT_PATH}}"
 
-        if ! command -v kubeseal >/dev/null 2>&1; then
-          wget -qO kubeseal.tar.gz https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.1/kubeseal-0.27.1-linux-amd64.tar.gz;
-          tar -xzf kubeseal.tar.gz kubeseal;
-          mv kubeseal /usr/local/bin/kubeseal;
-          rm kubeseal.tar.gz;
-        fi;
-
-        kubectl create secret generic {{.NAME}} -n {{.TENANT}} --from-literal={{.KEY}}='{{.VAL}}' --dry-run=client -o yaml |
-        kubeseal --controller-name=sealed-secrets --controller-namespace=kube-system -o yaml
-        " > tenants/{{.TENANT}}/{{.NAME}}-secret.yaml
-      - echo "Sealed secret saved locally to tenants/{{.TENANT}}/{{.NAME}}-secret.yaml"
-
-  db:up:
-    desc: "Start local PostgreSQL database"
+  cluster:set-email:
+    desc: "Template LETS_ENCRYPT_EMAIL from .env into ClusterIssuer manifests"
+    preconditions:
+      - sh: test -n "{{.LETS_ENCRYPT_EMAIL}}"
+        msg: "LETS_ENCRYPT_EMAIL is not set in .env"
     cmds:
-      - docker compose up -d db
+      - >-
+        sed -i '' 's|email: .*|email: {{.LETS_ENCRYPT_EMAIL}}|g'
+        infra/manifests/cert-manager/cluster-issuers.yaml
+      - echo "[CLUSTER] ClusterIssuer email set to {{.LETS_ENCRYPT_EMAIL}}"
 
-  db:down:
-    desc: "Stop local PostgreSQL database"
-    cmds:
-      - docker compose down
-
-  db:migrate:
-    desc: "Run database migrations (up)"
-    cmds:
-      - go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path core/migrations -database "{{.PLATFORM_DATABASE_URL}}" up
-
-  db:migrate-down:
-    desc: "Rollback the last database migration (down 1)"
-    cmds:
-      - go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path core/migrations -database "{{.PLATFORM_DATABASE_URL}}" down 1
-
-  db:create-migration:
-    desc: "Create a new migration (usage: task db:create-migration NAME=create_users)"
-    cmds:
-      - go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest create -ext sql -dir core/migrations -seq {{.NAME}}
-    requires:
-      vars: [NAME]
-
-  db:generate:
-    desc: "Generate Go models and queries from SQL using sqlc"
-    dir: core
-    cmds:
-      - go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
-      - echo "✅ Database models regenerated in core/internal/db"
-
-  db:setup:
-    desc: "Spin up DB, wait, migrate, and generate code"
-    cmds:
-      - task: db:up
-      - echo "Waiting for DB to be ready..."
-      - sleep 5
-      - task: db:migrate
-      - task: db:generate
-
-  db:login:
-    desc: "Login to the local PostgreSQL database"
-    cmds:
-      - docker exec -it project-platform-db-1 psql -U platform platform_db
-
-  dev:server:
-    desc: "Run the Core Server locally with live-reload (Air)"
-    dir: core
-    ignore_error: true
-    cmds:
-      - go run github.com/air-verse/air@latest -c .air.server.toml
-
-  dev:worker:
-    desc: "Run the Background Build Worker locally"
-    dir: core
-    cmds:
-      - go run github.com/air-verse/air@latest -c .air.worker.toml
-
-  dev:web:
-    desc: "Run the Go+HTMX Backend-for-Frontend (BFF)"
-    dir: core
-    ignore_error: true
+  backup:sealed-secrets-key:
+    desc: "Export the Sealed Secrets master key and upload to GCS"
+    vars:
+      CP_HOSTNAME:
+        sh: cd infra/terraform && terraform output -raw control_plane_init_hostname
     cmds:
       - |
-        templ generate --watch &
-        tailwindcss -i ./internal/web/ui/static/input.css -o ./internal/web/ui/static/styles.css --watch &
-        go run github.com/air-verse/air@latest -c .air.web.toml
+        echo "[SEALED-SECRETS] Exporting sealing key from {{.CP_HOSTNAME}}..."
+        ssh root@{{.CP_HOSTNAME}} '
+          export KUBECONFIG=/etc/kubernetes/admin.conf
+          set -euo pipefail
+          kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml
+        ' > /tmp/sealed-secrets-master.key
+        echo "[SEALED-SECRETS] Key exported to /tmp/sealed-secrets-master.key"
+        echo "[SEALED-SECRETS] Uploading to GCS..."
+        gsutil cp /tmp/sealed-secrets-master.key "gs://{{.GCS_SEALED_SECRETS_BUCKET}}/sealed-secrets-master-$(date +%Y%m%d).key"
+        rm -f /tmp/sealed-secrets-master.key
+        echo "[SEALED-SECRETS] Done. Key backed up to GCS at $(date -Iseconds)"
+        echo "[SEALED-SECRETS] ⚠ Run this after every cluster bootstrap or key rotation."
 
-  dev:
-    desc: "Run all services locally with live-reload (Air)"
-    deps:
-      - dev:server
-      - dev:web
+  backup:test-etcd:
+    desc: "Restore-test the latest etcd snapshot on a control-plane node"
+    vars:
+      CP_HOSTNAME:
+        sh: cd infra/terraform && terraform output -raw control_plane_init_hostname
+    cmds:
+      - |
+        echo "[RESTORE-TEST] etcd snapshot restore-test on {{.CP_HOSTNAME}}..."
+        ssh root@{{.CP_HOSTNAME}} '
+          set -euo pipefail
+          LATEST=$(ls -t /var/lib/etcd-backup/etcd-snapshot-*.db 2>/dev/null | head -1)
+          if [ -z "$LATEST" ]; then
+            echo "[RESTORE-TEST] No local snapshots found, checking GCS..."
+            LATEST="/tmp/etcd-restore-test.db"
+            gsutil cp $(gsutil ls gs://'"'"'{{.GCS_ETCD_BUCKET}}'"'"'/etcd-snapshot-*.db | tail -1) "$LATEST"
+          fi
+          echo "[RESTORE-TEST] Testing snapshot: $LATEST"
+          etcdutl snapshot status "$LATEST" --write-out=table
+          RESTORE_DIR=$(mktemp -d /tmp/etcd-restore-test.XXXXXX)
+          etcdutl snapshot restore "$LATEST" --data-dir="$RESTORE_DIR"
+          echo "[RESTORE-TEST] Restore succeeded to $RESTORE_DIR"
+          rm -rf "$RESTORE_DIR"
+          echo "[RESTORE-TEST] PASS — $(date -Iseconds)"
+        '
+
+  backup:test-postgres:
+    desc: "Restore-test the latest CNPG backup to a throwaway cluster"
+    vars:
+      CP_HOSTNAME:
+        sh: cd infra/terraform && terraform output -raw control_plane_init_hostname
+    cmds:
+      - |
+        echo "[RESTORE-TEST] CNPG Postgres restore-test on {{.CP_HOSTNAME}}..."
+        ssh root@{{.CP_HOSTNAME}} '
+          export KUBECONFIG=/etc/kubernetes/admin.conf
+          set -euo pipefail
+
+          # Create a throwaway CNPG cluster that restores from the latest backup
+          cat <<EOF | kubectl apply -f -
+        apiVersion: postgresql.cnpg.io/v1
+        kind: Cluster
+        metadata:
+          name: restore-test
+          namespace: platform-system
+        spec:
+          instances: 1
+          bootstrap:
+            recovery:
+              source: platform-db
+          externalClusters:
+            - name: platform-db
+              barmanObjectStore:
+                destinationPath: "s3://placeholder"
+                s3Credentials:
+                  accessKeyId:
+                    name: cnpg-backup-creds
+                    key: ACCESS_KEY_ID
+                  secretAccessKey:
+                    name: cnpg-backup-creds
+                    key: ACCESS_SECRET_KEY
+          storage:
+            size: 1Gi
+        EOF
+
+          echo "[RESTORE-TEST] Waiting for restore-test cluster to be ready (5min timeout)..."
+          kubectl wait --for=condition=Ready cluster/restore-test -n platform-system --timeout=300s
+
+          echo "[RESTORE-TEST] Verifying database is accessible..."
+          kubectl exec -n platform-system restore-test-1 -- psql -U postgres -c "SELECT 1" >/dev/null
+
+          echo "[RESTORE-TEST] PASS — cleaning up..."
+          kubectl delete cluster restore-test -n platform-system --wait=false
+          echo "[RESTORE-TEST] PASS — $(date -Iseconds)"
+        '
+

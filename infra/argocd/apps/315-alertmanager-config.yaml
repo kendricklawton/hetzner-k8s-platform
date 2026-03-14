@@ -1,0 +1,66 @@
+# =============================================================================
+# ALERTMANAGER CONFIG — Base configuration Secret (PLACEHOLDER ONLY)
+# =============================================================================
+# Referenced by alertmanager.spec.configSecret in the VM k8s-stack.
+#
+# ⚠ WARNING: This plain Secret exists only for initial bootstrap with dummy
+# webhook URLs. Before adding real credentials (Discord webhooks, PagerDuty
+# keys, etc.), you MUST convert this to a SealedSecret:
+#
+#   1. Edit the alertmanager.yaml content with real webhook URLs
+#   2. Seal it:
+#      task cluster:seal TENANT=observability NAME=alertmanager-config \
+#        KEY=alertmanager.yaml VAL="$(cat alertmanager-config.yaml)"
+#   3. Replace this file with the SealedSecret output
+#   4. Commit and push — ArgoCD will sync the sealed version
+#
+# NEVER commit real webhook URLs or API keys in this plaintext form.
+# =============================================================================
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-config
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: default
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        # Dead man's switch — fires continuously to prove alerting pipeline is alive.
+        # Point this at a service like Healthchecks.io or Cronitor. If it stops
+        # pinging, your alerting is broken.
+        - receiver: deadman
+          matchers:
+            - alertname="Watchdog"
+          repeat_interval: 1m
+          group_wait: 0s
+        - receiver: critical
+          matchers:
+            - severity="critical"
+          repeat_interval: 1h
+    receivers:
+      # PLACEHOLDER receivers — replace URLs and seal before production.
+      # Alerts will be SILENTLY DROPPED until real endpoints are configured.
+      - name: default
+        webhook_configs:
+          - url: "http://placeholder.local/alert"
+            send_resolved: true
+      - name: critical
+        webhook_configs:
+          - url: "http://placeholder.local/alert"
+            send_resolved: true
+      - name: deadman
+        webhook_configs:
+          - url: "http://placeholder.local/deadman"
+            send_resolved: false

@@ -1,8 +1,8 @@
 # =============================================================================
-# RUSTFS TO GCS SYNC — CronJob
+# RUSTFS TO GCS BACKUP — CronJob
 # =============================================================================
-# Syncs object storage data from internal RustFS to Google Cloud Storage.
-# Runs daily at 02:00 UTC (during typical low-traffic periods).
+# Copies object storage data from internal RustFS to Google Cloud Storage.
+# Runs daily at 03:00 UTC (staggered from etcd backup at 02:00).
 # =============================================================================
 apiVersion: batch/v1
 kind: CronJob
@@ -12,7 +12,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  schedule: "0 2 * * *" # 02:00 UTC daily
+  schedule: "0 3 * * *" # 03:00 UTC daily (staggered from etcd backup at 02:00)
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
@@ -25,23 +25,34 @@ spec:
           containers:
             - name: rclone-sync
               image: rclone/rclone:1.65
+              env:
+                - name: RUSTFS_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: rclone-config-secret
+                      key: rustfs-bucket-name
+                - name: GCS_BACKUP_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: rclone-config-secret
+                      key: gcs-backup-bucket-name
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -euo pipefail
-                  echo "[rustfs-backup] Starting Sync to GCS at $(date)"
+                  echo "[rustfs-backup] Starting copy to GCS at $(date)"
 
-                  # The 'sync' command makes the destination exactly match the source.
-                  # It will upload new files and delete files in GCS that were deleted in RustFS.
-                  rclone sync local-rustfs:your-data-bucket gcp-backup:your-gcs-backup-bucket \
+                  # 'copy' is additive-only — never deletes from destination.
+                  # GCS bucket versioning + lifecycle rules handle expiration.
+                  rclone copy rustfs:${RUSTFS_BUCKET} gcs:${GCS_BACKUP_BUCKET} \
                     --config /etc/rclone/rclone.conf \
                     --progress \
                     --transfers 4 \
                     --checkers 8 \
                     --fast-list
 
-                  echo "[rustfs-backup] Sync complete at $(date)"
+                  echo "[rustfs-backup] Copy complete at $(date)"
               volumeMounts:
                 - name: rclone-config
                   mountPath: /etc/rclone

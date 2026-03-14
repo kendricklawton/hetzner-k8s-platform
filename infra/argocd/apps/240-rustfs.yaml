@@ -13,16 +13,18 @@ spec:
     # Uses the official RustFS helm repository
     repoURL: "https://rustfs.github.io/helm"
     chart: rustfs
-    targetRevision: "main" # Replace with specific version tag once stabilized
+    targetRevision: "0.0.85"
     helm:
       values: |
         replicaCount: 1 # Single node mode for now, scale up as needed
         persistence:
           enabled: true
           size: 50Gi
-        # Set your root credentials
-        rootUser: "admin"
-        rootPassword: "your-secure-rustfs-password"
+        # Root credentials sourced from a SealedSecret.
+        # Create with: task cluster:seal TENANT=platform-system NAME=rustfs-credentials \
+        #   KEY=rootUser VAL='admin'
+        # Then seal rootPassword the same way.
+        existingSecret: rustfs-credentials
         # Optional: Enable the modern Next.js management console
         console:
           enabled: true
