@@ -1,0 +1,19 @@
+#cloud-config
+hostname: __HOSTNAME__
+manage_etc_hosts: true
+ssh_deletekeys: true
+ssh_genkeytypes: [rsa, ecdsa, ed25519]
+
+write_files:
+  - path: /etc/nat-bootstrap.env
+    permissions: "0600"
+    content: |
+      ROLE=secondary
+      HOSTNAME=__HOSTNAME__
+      TAILSCALE_AUTH_KEY=__TAILSCALE_AUTH_NAT_KEY__
+      PEER_NAT_IP=__PEER_NAT_IP__
+      HCLOUD_TOKEN=__HCLOUD_TOKEN__
+      HCLOUD_NETWORK_ID=__HCLOUD_NETWORK_ID__
+
+runcmd:
+  - /usr/local/bin/nat-bootstrap.sh

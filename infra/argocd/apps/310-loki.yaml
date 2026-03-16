@@ -21,6 +21,14 @@ spec:
             replication_factor: 1
           storage:
             type: filesystem
+          compactor:
+            working_directory: /loki/compactor
+            compaction_interval: 10m
+            retention_enabled: true
+            retention_delete_delay: 2h
+            retention_delete_worker_count: 150
+          limits_config:
+            retention_period: 14d
           schemaConfig:
             configs:
               - from: "2024-01-01"

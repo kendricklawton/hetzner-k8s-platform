@@ -15,7 +15,7 @@ vars:
   HETZNER_CCM_VERSION: "1.30.1"
   HETZNER_CSI_VERSION: "2.6.0"
 
-  PROJECT_NAME: "hetzner-platform"
+  PROJECT_NAME: "hetzner-k8s"
 
   # BOOTSTRAP COMPONENT VERSIONS (installed via cloud-init, not ArgoCD)
   # Cilium, CCM, CSI, Sealed Secrets, and ArgoCD are installed during
@@ -140,7 +140,14 @@ tasks:
     desc: "Show Hetzner Terraform outputs (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", CMD: "output", ARGS: "" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "dev",
+            CMD: "output",
+            ARGS: "",
+          }
 
   # --- PROD: Hetzner Ashburn ---
   plan:prod:
@@ -186,7 +193,14 @@ tasks:
     desc: "Show Hetzner Terraform outputs (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", CMD: "output", ARGS: "" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            CMD: "output",
+            ARGS: "",
+          }
 
   infra:bootstrap:
     desc: "Create GCS state bucket with versioning enabled (run once per environment)"
@@ -237,8 +251,8 @@ tasks:
   validate:kustomize:
     desc: "Validate Kustomize overlays render without errors"
     cmds:
-      - kustomize build infra/argocd/envs/dev >/dev/null
-      - kustomize build infra/argocd/envs/prod >/dev/null
+      - kubectl kustomize infra/argocd/envs/dev --load-restrictor=LoadRestrictionsNone >/dev/null
+      - kubectl kustomize infra/argocd/envs/prod --load-restrictor=LoadRestrictionsNone >/dev/null
       - echo "[VALIDATE] Kustomize overlays OK"
 
   validate:manifests:
@@ -246,8 +260,8 @@ tasks:
     cmds:
       - |
         if command -v kubeconform >/dev/null 2>&1; then
-          kustomize build infra/argocd/envs/dev | kubeconform -strict -ignore-missing-schemas -summary
-          kustomize build infra/argocd/envs/prod | kubeconform -strict -ignore-missing-schemas -summary
+          kubectl kustomize infra/argocd/envs/dev --load-restrictor=LoadRestrictionsNone | kubeconform -strict -ignore-missing-schemas -summary
+          kubectl kustomize infra/argocd/envs/prod --load-restrictor=LoadRestrictionsNone | kubeconform -strict -ignore-missing-schemas -summary
           for f in infra/argocd/apps/*.yaml; do
             kubeconform -strict -ignore-missing-schemas "$f"
           done
@@ -256,6 +270,14 @@ tasks:
           echo "[VALIDATE] kubeconform not installed — skipping manifest validation"
           echo "[VALIDATE] Install: brew install kubeconform"
         fi
+
+  cluster:set-app-namespace:
+    desc: "Set the app namespace name for an environment"
+    requires:
+      vars: [NAME, ENV]
+    cmds:
+      - sed -i '' 's/APP_NAMESPACE=.*/APP_NAMESPACE={{.NAME}}/' infra/argocd/envs/{{.ENV}}/kustomization.yaml
+      - echo "[CLUSTER] App namespace set to {{.NAME}} for {{.ENV}}"
 
   cluster:fetch-cert:
     desc: "Fetch the Sealed Secrets public cert from the cluster (run once after bootstrap)"
@@ -276,12 +298,12 @@ tasks:
       vars: [TENANT, NAME, KEY, VAL]
     vars:
       DEST: ""
-      OUTPUT_PATH: '{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}'
+      OUTPUT_PATH: "{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}"
     preconditions:
       - sh: test -f keys/sealed-secrets-cert.pem
         msg: "No public cert found. Run 'task cluster:fetch-cert' first."
     cmds:
-      - '{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}'
+      - "{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}"
       - >-
         kubectl create secret generic {{.NAME}} -n {{.TENANT}}
         --from-literal={{.KEY}}='{{.VAL}}'
@@ -397,4 +419,3 @@ tasks:
           kubectl delete cluster restore-test -n platform-system --wait=false
           echo "[RESTORE-TEST] PASS — $(date -Iseconds)"
         '
-

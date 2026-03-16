@@ -23,6 +23,40 @@ resources:
   - ../../apps/400-etcd-backup.yaml
   - ../../apps/410-rustfs-gcs-backup.yaml
 
+# App namespace — change APP_NAMESPACE to set your project name.
+# Replacements propagate the name to all NetworkPolicies, LimitRanges, and ResourceQuotas.
+# Usage: task cluster:set-app-namespace ENV=prod NAME=my-project
+configMapGenerator:
+  - name: app-namespace-config
+    namespace: argocd
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - APP_NAMESPACE=app
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: app-namespace-config
+      namespace: argocd
+      fieldPath: data.APP_NAMESPACE
+    targets:
+      - select:
+          kind: Namespace
+          name: app
+        fieldPaths:
+          - metadata.name
+      - select:
+          namespace: app
+        fieldPaths:
+          - metadata.namespace
+      - select:
+          kind: NetworkPolicy
+          name: allow-from-app
+          namespace: platform-system
+        fieldPaths:
+          - spec.ingress.0.from.0.namespaceSelector.matchLabels.[kubernetes.io/metadata.name]
+
 patches:
   # Hetzner CCM: adopt the Terraform-managed LB by name.
   # Name follows pattern: {env}-{location}-lb-ingress (see main.tf).

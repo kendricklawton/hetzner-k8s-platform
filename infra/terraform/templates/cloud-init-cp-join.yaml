@@ -1,0 +1,23 @@
+#cloud-config
+hostname: __HOSTNAME__
+manage_etc_hosts: true
+ssh_deletekeys: true
+ssh_genkeytypes: [rsa, ecdsa, ed25519]
+
+write_files:
+  - path: /etc/k8s-bootstrap.env
+    permissions: "0600"
+    content: |
+      ROLE=cp-join
+      HOSTNAME=__HOSTNAME__
+      NODE_PRIVATE_IP=__NODE_PRIVATE_IP__
+      NETWORK_GATEWAY=__NETWORK_GATEWAY__
+      KUBERNETES_API_LB_IP=__KUBERNETES_API_LB_IP__
+      KUBEADM_TOKEN=__KUBEADM_TOKEN__
+      KUBEADM_CERT_KEY=__KUBEADM_CERT_KEY__
+      TAILSCALE_AUTH_KEY=__TAILSCALE_AUTH_KEY__
+      ENCRYPTION_KEY=__ENCRYPTION_KEY__
+      CP_INIT_PRIVATE_IP=__CP_INIT_PRIVATE_IP__
+
+runcmd:
+  - /usr/local/bin/kubeadm-bootstrap.sh

@@ -31,11 +31,18 @@ infra/
 │   ├── firewall.tf                # Role-specific firewalls (nat, cp, worker)
 │   ├── backups.tf                 # GCS backup buckets + SA rotation
 │   └── templates/
-│       ├── cloud-init-node.yaml   # kubeadm bootstrap (cp_init, cp_join, worker)
-│       └── cloud-init-nat.yaml    # NAT gateway bootstrap
+│       ├── cloud-init-cp-init.yaml      # First control-plane node (env file + bootstrap call)
+│       ├── cloud-init-cp-join.yaml      # Joining control-plane nodes
+│       ├── cloud-init-worker.yaml       # Worker nodes
+│       ├── cloud-init-nat-primary.yaml  # Primary NAT gateway
+│       └── cloud-init-nat-secondary.yaml # Secondary NAT gateway (failover)
 ├── packer/
 │   ├── ubuntu.pkr.hcl             # Golden image builds (NAT + K8s)
-│   └── scripts/                   # Shared provisioner scripts (base, tailscale, cleanup)
+│   ├── scripts/                   # Shared provisioner scripts (base, tailscale, cleanup)
+│   └── files/
+│       ├── kubeadm-bootstrap.sh   # Unified K8s bootstrap (cp-init, cp-join, worker)
+│       ├── nat-bootstrap.sh       # NAT gateway bootstrap (primary + secondary)
+│       └── nat-failover.sh        # NAT failover watchdog (secondary only)
 ├── argocd/
 │   ├── apps/                      # Base ArgoCD Application manifests (sync-wave ordered)
 │   └── envs/                      # Kustomize overlays per environment (dev, prod)

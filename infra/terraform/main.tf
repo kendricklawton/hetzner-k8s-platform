@@ -26,10 +26,10 @@ terraform {
 }
 
 # VARIABLES
-variable "env" { type = string }              # dev | prod
-variable "location" { type = string }         # Hetzner datacenter: ash, hil, nbg1, fsn1, hel1
-variable "network_zone" { type = string }     # Hetzner network zone: us-east, eu-central, ap-southeast
-variable "token" { sensitive = true }         # Full access — used by Terraform only
+variable "env" { type = string }               # dev | prod
+variable "location" { type = string }          # Hetzner datacenter: ash, hil, nbg1, fsn1, hel1
+variable "network_zone" { type = string }      # Hetzner network zone: us-east, eu-central, ap-southeast
+variable "token" { sensitive = true }          # Full access — used by Terraform only
 variable "token_readonly" { sensitive = true } # Read-only + volumes — injected into cluster for CCM/CSI
 variable "ssh_key_name" { type = string }
 
@@ -220,14 +220,11 @@ resource "hcloud_server" "nat" {
     ip         = local.nat_primary_ip
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init-nat.yaml", {
-    tailscale_auth_nat_key = tailscale_tailnet_key.nat.key
-    hostname               = "${local.prefix}-nat"
-    is_primary             = true
-    peer_nat_ip            = local.nat_secondary_ip
-    hcloud_token           = ""
-    hcloud_network_id      = ""
-  })
+  user_data = replace(replace(
+    file("${path.module}/templates/cloud-init-nat-primary.yaml"),
+    "__HOSTNAME__", "${local.prefix}-nat"),
+    "__TAILSCALE_AUTH_NAT_KEY__", tailscale_tailnet_key.nat.key,
+  )
 
   lifecycle {
     prevent_destroy = true
@@ -254,14 +251,14 @@ resource "hcloud_server" "nat_secondary" {
     ip         = local.nat_secondary_ip
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init-nat.yaml", {
-    tailscale_auth_nat_key = tailscale_tailnet_key.nat.key
-    hostname               = "${local.prefix}-nat-02"
-    is_primary             = false
-    peer_nat_ip            = local.nat_primary_ip
-    hcloud_token           = var.token
-    hcloud_network_id      = hcloud_network.main.id
-  })
+  user_data = replace(replace(replace(replace(replace(
+    file("${path.module}/templates/cloud-init-nat-secondary.yaml"),
+    "__HOSTNAME__", "${local.prefix}-nat-02"),
+    "__TAILSCALE_AUTH_NAT_KEY__", tailscale_tailnet_key.nat.key),
+    "__PEER_NAT_IP__", local.nat_primary_ip),
+    "__HCLOUD_TOKEN__", var.token),
+    "__HCLOUD_NETWORK_ID__", hcloud_network.main.id,
+  )
 
   depends_on = [hcloud_server.nat]
 }
@@ -345,29 +342,29 @@ resource "hcloud_server" "control_plane_init" {
     ip         = local.cp_map[local.init_cp_name]
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init-node.yaml", {
-    role                   = "cp_init"
-    hostname               = local.init_cp_name
-    node_private_ip        = local.cp_map[local.init_cp_name]
-    network_gateway        = local.nat_primary_ip
-    kubernetes_api_lb_ip   = local.api_load_balancer_ip
-    kubeadm_token          = local.kubeadm_token
-    kubeadm_cert_key       = random_id.kubeadm_cert_key.hex
-    tailscale_auth_key     = tailscale_tailnet_key.cp.key
-    git_repo_url           = var.git_repo_url
-    argocd_apps_path       = "infra/argocd/envs/${var.env}"
-    cilium_version         = var.cilium_version
-    hcloud_mtu             = var.hcloud_mtu
-    argocd_version         = var.argocd_version
-    hcloud_token           = var.token
-    hcloud_token_readonly  = var.token_readonly
-    hcloud_network_name    = hcloud_network.main.name
-    ccm_version            = var.ccm_version
-    csi_version            = var.csi_version
-    ingress_nginx_version  = var.ingress_nginx_version
-    sealed_secrets_version = var.sealed_secrets_version
-    encryption_key         = random_id.encryption_key.b64_std
-  })
+  user_data = replace(replace(replace(replace(replace(replace(
+    replace(replace(replace(replace(replace(replace(
+      replace(replace(replace(replace(replace(replace(
+        file("${path.module}/templates/cloud-init-cp-init.yaml"),
+        "__HOSTNAME__", local.init_cp_name),
+        "__NODE_PRIVATE_IP__", local.cp_map[local.init_cp_name]),
+        "__NETWORK_GATEWAY__", local.nat_primary_ip),
+        "__KUBERNETES_API_LB_IP__", local.api_load_balancer_ip),
+        "__KUBEADM_TOKEN__", local.kubeadm_token),
+      "__KUBEADM_CERT_KEY__", random_id.kubeadm_cert_key.hex),
+      "__TAILSCALE_AUTH_KEY__", tailscale_tailnet_key.cp.key),
+      "__GIT_REPO_URL__", var.git_repo_url),
+      "__ARGOCD_APPS_PATH__", "infra/argocd/envs/${var.env}"),
+      "__CILIUM_VERSION__", var.cilium_version),
+      "__HCLOUD_MTU__", tostring(var.hcloud_mtu)),
+    "__ARGOCD_VERSION__", var.argocd_version),
+    "__HCLOUD_TOKEN_READONLY__", var.token_readonly),
+    "__HCLOUD_NETWORK_NAME__", hcloud_network.main.name),
+    "__CCM_VERSION__", var.ccm_version),
+    "__CSI_VERSION__", var.csi_version),
+    "__SEALED_SECRETS_VERSION__", var.sealed_secrets_version),
+    "__ENCRYPTION_KEY__", random_id.encryption_key.b64_std,
+  )
 
   lifecycle {
     prevent_destroy = true
@@ -404,29 +401,18 @@ resource "hcloud_server" "control_plane_join" {
     ip         = each.value
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init-node.yaml", {
-    role                   = "cp_join"
-    hostname               = each.key
-    node_private_ip        = each.value
-    network_gateway        = local.nat_primary_ip
-    kubernetes_api_lb_ip   = local.api_load_balancer_ip
-    kubeadm_token          = local.kubeadm_token
-    kubeadm_cert_key       = random_id.kubeadm_cert_key.hex
-    tailscale_auth_key     = tailscale_tailnet_key.cp.key
-    git_repo_url           = var.git_repo_url
-    argocd_apps_path       = "infra/argocd/envs/${var.env}"
-    cilium_version         = var.cilium_version
-    hcloud_mtu             = var.hcloud_mtu
-    argocd_version         = var.argocd_version
-    hcloud_token           = var.token
-    hcloud_token_readonly  = var.token_readonly
-    hcloud_network_name    = hcloud_network.main.name
-    ccm_version            = var.ccm_version
-    csi_version            = var.csi_version
-    ingress_nginx_version  = var.ingress_nginx_version
-    sealed_secrets_version = var.sealed_secrets_version
-    encryption_key         = random_id.encryption_key.b64_std
-  })
+  user_data = replace(replace(replace(replace(replace(replace(replace(replace(replace(
+    file("${path.module}/templates/cloud-init-cp-join.yaml"),
+    "__HOSTNAME__", each.key),
+    "__NODE_PRIVATE_IP__", each.value),
+    "__NETWORK_GATEWAY__", local.nat_primary_ip),
+    "__KUBERNETES_API_LB_IP__", local.api_load_balancer_ip),
+    "__KUBEADM_TOKEN__", local.kubeadm_token),
+    "__KUBEADM_CERT_KEY__", random_id.kubeadm_cert_key.hex),
+    "__TAILSCALE_AUTH_KEY__", tailscale_tailnet_key.cp.key),
+    "__ENCRYPTION_KEY__", random_id.encryption_key.b64_std),
+    "__CP_INIT_PRIVATE_IP__", local.cp_map[local.init_cp_name],
+  )
 
   lifecycle {
     ignore_changes = [user_data]
@@ -463,30 +449,15 @@ resource "hcloud_server" "worker" {
     ip         = each.value
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init-node.yaml", {
-    role                   = "worker"
-    hostname               = each.key
-    network_gateway        = local.nat_primary_ip
-    kubernetes_api_lb_ip   = local.api_load_balancer_ip
-    kubeadm_token          = local.kubeadm_token
-    tailscale_auth_key     = tailscale_tailnet_key.worker.key
-    # CP-only vars (unused for workers, required by templatefile)
-    node_private_ip        = ""
-    kubeadm_cert_key       = ""
-    git_repo_url           = ""
-    argocd_apps_path       = ""
-    cilium_version         = ""
-    hcloud_mtu             = 0
-    argocd_version         = ""
-    hcloud_token           = ""
-    hcloud_token_readonly  = ""
-    hcloud_network_name    = ""
-    ccm_version            = ""
-    csi_version            = ""
-    ingress_nginx_version  = ""
-    sealed_secrets_version = ""
-    encryption_key         = ""
-  })
+  user_data = replace(replace(replace(replace(replace(replace(
+    file("${path.module}/templates/cloud-init-worker.yaml"),
+    "__HOSTNAME__", each.key),
+    "__NETWORK_GATEWAY__", local.nat_primary_ip),
+    "__KUBERNETES_API_LB_IP__", local.api_load_balancer_ip),
+    "__KUBEADM_TOKEN__", local.kubeadm_token),
+    "__TAILSCALE_AUTH_KEY__", tailscale_tailnet_key.worker.key),
+    "__CP_INIT_PRIVATE_IP__", local.cp_map[local.init_cp_name],
+  )
 
   lifecycle {
     ignore_changes = [user_data]
