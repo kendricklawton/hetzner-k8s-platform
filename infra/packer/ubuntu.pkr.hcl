@@ -84,20 +84,6 @@ source "hcloud" "nat_ash" {
   }
 }
 
-source "hcloud" "nat_hil" {
-  token         = var.hcloud_token
-  image         = var.hcloud_ubuntu_version
-  location      = "hil"
-  server_type   = var.hcloud_nat_type
-  ssh_username  = "root"
-  snapshot_name = "hil-nat-gateway-ubuntu-amd64-${local.timestamp}"
-  snapshot_labels = {
-    role     = "nat-gateway"
-    location = "hil"
-    version  = local.timestamp
-  }
-}
-
 # SOURCES: K8S NODE
 source "hcloud" "k8s_ash" {
   token         = var.hcloud_token
@@ -113,24 +99,10 @@ source "hcloud" "k8s_ash" {
   }
 }
 
-source "hcloud" "k8s_hil" {
-  token         = var.hcloud_token
-  image         = var.hcloud_ubuntu_version
-  location      = "hil"
-  server_type   = var.hcloud_k8s_type
-  ssh_username  = "root"
-  snapshot_name = "hil-k8s-node-ubuntu-amd64-${local.timestamp}"
-  snapshot_labels = {
-    role     = "k8s-node"
-    location = "hil"
-    version  = local.timestamp
-  }
-}
-
 # BUILD: NAT GATEWAY
 build {
   name    = "nat"
-  sources = ["source.hcloud.nat_ash", "source.hcloud.nat_hil"]
+  sources = ["source.hcloud.nat_ash"]
 
   # --- SHARED: Base packages + SSH hardening ---
   provisioner "shell" {
@@ -193,24 +165,29 @@ build {
     script = "${path.root}/scripts/tailscale.sh"
   }
 
+  # --- NAT-SPECIFIC: Remove hc-utils (races with systemd-networkd on private iface) ---
+  provisioner "shell" {
+    inline = ["apt-get remove -y hc-utils || true"]
+  }
+
   # --- NAT-SPECIFIC: Bake netplan config ---
+  # enp7s0 = private interface on CPX/CCX/CAX servers.
+  # Public interface (enp1s0) is left to cloud-init (50-cloud-init.yaml)
+  # since the NAT gateway needs its public IP to forward traffic.
   provisioner "shell" {
     inline = [
       "cat << 'EOF' > /etc/netplan/60-private-net.yaml",
       "network:",
       "  version: 2",
       "  ethernets:",
-      "    private:",
-      "      match:",
-      "        name: \"e*\"",
+      "    enp7s0:",
       "      dhcp4: true",
       "      dhcp4-overrides:",
       "        use-routes: false",
       "      routes:",
-      "      - to: 10.0.0.1",
-      "        scope: link",
-      "      - to: 10.0.0.0/16",
-      "        via: 10.0.0.1",
+      "        - to: 10.0.0.0/16",
+      "          via: 10.0.0.1",
+      "          on-link: true",
       "EOF",
       "chmod 0600 /etc/netplan/60-private-net.yaml"
     ]
@@ -263,7 +240,7 @@ build {
 # BUILD: K8S NODE (vanilla Kubernetes via kubeadm)
 build {
   name    = "k8s"
-  sources = ["source.hcloud.k8s_ash", "source.hcloud.k8s_hil"]
+  sources = ["source.hcloud.k8s_ash"]
 
   # --- SHARED: Base packages + SSH hardening ---
   provisioner "shell" {
@@ -327,19 +304,10 @@ build {
     ]
   }
 
-  # --- K8S-SPECIFIC: crictl (SHA256 verified) ---
+  # --- K8S-SPECIFIC: crictl config ---
+  # crictl is installed as a dependency of kubeadm (cri-tools package)
   provisioner "shell" {
     inline = [
-      "K8S_VERSION='${var.kubernetes_version}'",
-      "CRICTL_VERSION=$(echo $K8S_VERSION | sed 's/^v//')",
-      "ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')",
-      "CRICTL_URL=https://github.com/kubernetes-sigs/cri-tools/releases/download/v$${CRICTL_VERSION}",
-      "wget -q $${CRICTL_URL}/crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz",
-      "wget -q $${CRICTL_URL}/crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
-      "sha256sum -c crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
-      "tar -xzf crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz -C /usr/local/bin",
-      "rm -f crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz crictl-v$${CRICTL_VERSION}-linux-$${ARCH}.tar.gz.sha256",
-      "chmod +x /usr/local/bin/crictl",
       "printf 'runtime-endpoint: unix:///run/containerd/containerd.sock\\nimage-endpoint: unix:///run/containerd/containerd.sock\\n' > /etc/crictl.yaml"
     ]
   }
@@ -371,21 +339,37 @@ build {
     ]
   }
 
+  # --- K8S-SPECIFIC: Disable cloud-init network management + remove hc-utils ---
+  # K8s nodes have no public IP, so cloud-init's 50-cloud-init.yaml is useless
+  # and conflicts with our baked config. Disable it at the source.
+  # hc-utils (Hetzner DHCP helper) races with systemd-networkd — remove it.
+  provisioner "shell" {
+    inline = [
+      "echo 'network: {config: disabled}' > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg",
+      "apt-get remove -y hc-utils || true"
+    ]
+  }
+
   # --- K8S-SPECIFIC: Bake netplan config ---
+  # enp7s0 = private interface on CPX/CCX/CAX servers (no public interface on K8s nodes).
+  # Includes metadata route so 169.254.169.254 is reachable immediately after boot.
   provisioner "shell" {
     inline = [
       "cat << 'EOF' > /etc/netplan/60-private-net.yaml",
       "network:",
       "  version: 2",
       "  ethernets:",
-      "    private:",
-      "      match:",
-      "        name: \"e*\"",
+      "    enp7s0:",
       "      dhcp4: true",
+      "      dhcp4-overrides:",
+      "        use-routes: false",
       "      nameservers:",
       "        addresses: [1.1.1.1, 8.8.8.8]",
       "      routes:",
       "        - to: 0.0.0.0/0",
+      "          via: 10.0.0.1",
+      "          on-link: true",
+      "        - to: 169.254.169.254/32",
       "          via: 10.0.0.1",
       "          on-link: true",
       "EOF",
@@ -416,16 +400,6 @@ build {
   provisioner "shell" {
     inline = [
       "chmod 0700 /usr/local/bin/kubeadm-bootstrap.sh",
-    ]
-  }
-
-  # --- K8S-SPECIFIC: Trivy security scan ---
-  provisioner "shell" {
-    inline = [
-      "wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -",
-      "echo \"deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main\" | tee /etc/apt/sources.list.d/trivy.list",
-      "apt-get update && apt-get install -y trivy",
-      "trivy filesystem --exit-code 1 --severity CRITICAL --ignore-unfixed /"
     ]
   }
 

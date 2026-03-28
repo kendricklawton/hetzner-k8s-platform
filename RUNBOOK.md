@@ -1,77 +1,93 @@
 # Runbook
 
-Operational procedures for the platform. Single-operator context — this is for me.
+Operational procedures for the platform. Single-operator context.
+
+---
+
+## Prerequisites
+
+- `terraform`, `packer`, `helm`, `kubectl` installed
+- `.env` populated (copy from `.env.example`)
+- GCP SA keys downloaded to `keys/`
+- SSH key uploaded to Hetzner Cloud
+- Tailscale API key + tailnet name
 
 ---
 
 ## Cluster Bootstrap
 
-### 0. Set Let's Encrypt email
+### 1. Set Let's Encrypt email
 ```sh
-# Set LETS_ENCRYPT_EMAIL in .env, then:
 task cluster:set-email
 ```
-Commit the updated `cluster-issuers.yaml` to Git before deploying.
+Commit the updated `cluster-issuers.yaml` before deploying.
 
-### 1. Build golden images (Packer)
+### 2. Build golden images
 ```sh
 task packer
 ```
-This produces hardened Ubuntu snapshots in Hetzner. Two image types: `role=k8s-node` and `role=nat-gateway`.
+Produces two Hetzner snapshots in Ashburn: `role=k8s-node` and `role=nat-gateway`.
 
-### 2. Provision infrastructure (Terraform)
+### 3. Deploy infrastructure
 ```sh
-# Dev (Ashburn)
+# Dev
 task plan
 task apply
 
-# Prod (Ashburn)
+# Prod
 task plan:prod
 task apply:prod
 ```
 
-Terraform creates:
-- VPC + subnet
-- NAT gateway server
-- API load balancer + ingress load balancer
-- Control plane servers (1 for dev, 3 for prod) with kubeadm bootstrap cloud-init
-- Worker nodes (1 for dev, 3 for prod)
-- Bootstrap manifests injected via cloud-init on the init server
+Dev creates: 1 NAT, 1 CP, 1 worker, 2 LBs, VPC.
+Prod creates: 2 NAT (failover), 3 CP (HA), 3 workers, 2 LBs, VPC.
 
-### 3. Connect to cluster
+### 4. Connect to cluster
 ```sh
-# Via Tailscale — kubeconfig is on the init control plane node
-ssh root@<tailscale-ip-of-init-server>
+ssh root@<cp-init-tailscale-hostname>
 cat /etc/kubernetes/admin.conf
 ```
-Copy kubeconfig locally and replace `127.0.0.1` with the Tailscale IP of the init server.
+Copy kubeconfig locally. Replace `127.0.0.1` with the Tailscale IP.
 
-### 4. Verify bootstrap
+### 5. Verify bootstrap
 ```sh
 kubectl get nodes
 kubectl get pods -A
 ```
 ArgoCD, Cilium, ingress-nginx, cert-manager, Sealed Secrets should all be running.
 
+### 6. Seal secrets (post-bootstrap)
+```sh
+# Fetch the sealing cert
+task cluster:fetch-cert
+
+# Seal RustFS credentials
+task cluster:seal TENANT=platform-system NAME=rustfs-credentials KEY=rootUser VAL='admin'
+# Seal rootPassword separately
+
+# Seal Grafana admin password
+task cluster:seal TENANT=observability NAME=grafana-admin-secret KEY=GF_SECURITY_ADMIN_PASSWORD VAL='your-password' \
+  DEST=infra/manifests/secrets/grafana-admin-secret.yaml
+```
+Commit and push the sealed secrets. ArgoCD syncs them automatically.
+
 ---
 
 ## ArgoCD
 
 ### Access
-ArgoCD is not exposed on a public ingress by default. Use port-forward:
 ```sh
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 # https://localhost:8080
 ```
-Or add a Tailscale-internal ingress rule for direct access.
 
-### Initial admin password
+### Admin password
 ```sh
 kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-### Sync an app manually
+### Manual sync
 ```sh
 argocd app sync <app-name>
 ```
@@ -80,28 +96,14 @@ argocd app sync <app-name>
 
 ## Sealed Secrets
 
-### Fetch the cluster's public cert (one-time after bootstrap)
+### Seal a secret
 ```sh
-task cluster:fetch-cert
+task cluster:seal TENANT=<namespace> NAME=<secret-name> KEY=<key> VAL='<value>'
 ```
-Saves to `keys/sealed-secrets-cert.pem`. This file is gitignored.
+Output: `tenants/<TENANT>/<NAME>-sealed.yaml`. Move to the target path and commit.
 
-### Seal a new secret
-```sh
-task cluster:seal TENANT=observability NAME=grafana-admin-secret KEY=GF_SECURITY_ADMIN_PASSWORD VAL='my-password'
-```
-Output goes to `tenants/<TENANT>/<NAME>-sealed.yaml`. Copy to the appropriate manifest location and commit.
-
-Optional: specify `DEST=infra/manifests/secrets/my-secret.yaml` to write directly to a target path.
-
-### Rotate a sealed secret
-Re-seal with the current cluster cert and push to Git. ArgoCD syncs it.
-
-### Backup the sealing key
-```sh
-task backup:sealed-secrets-key
-```
-Exports the master key from the cluster and uploads to GCS. Run after every bootstrap or key rotation.
+### Rotate
+Re-seal with the current cert and push. ArgoCD syncs it.
 
 ---
 
@@ -114,30 +116,45 @@ kubectl exec -it -n platform-system \
   -- psql -U platform platform
 ```
 
-### Manual backup trigger
+---
+
+## Backups
+
+### etcd
+Automated via CronJob at 02:00 UTC daily. Snapshots stored at `/var/lib/etcd-backup/` on control-plane nodes. Last 7 retained.
+
+Manual backup (CKA pattern):
 ```sh
-kubectl annotate cluster platform-cluster \
-  -n platform-system \
-  cnpg.io/immediateBackup=true
+ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  snapshot save /tmp/etcd-backup.db
 ```
 
-### Check backup status
+Manual restore:
 ```sh
-kubectl get backup -n platform-system
+etcdutl snapshot restore /tmp/etcd-backup.db --data-dir=/var/lib/etcd-restore
+# Update etcd static pod manifest to point to new data-dir, then restart
 ```
+
+### GCS backups
+Backup SA keys are sealed into the cluster as Kubernetes secrets. Services (RustFS, CNPG) push to the per-env GCS backup bucket using prefixes:
+- `postgres/`
+- `etcd/`
+- `rustfs/`
+- `logs/`
 
 ---
 
 ## Deployments
 
-Applications are deployed as ArgoCD `Application` CRs pointing to Helm charts or raw manifests. To deploy a new app:
-
-1. Add Kubernetes manifests under `infra/manifests/<app-name>/`
+1. Add manifests under `infra/manifests/<app-name>/` or a Helm chart reference
 2. Add an ArgoCD `Application` CR under `infra/argocd/apps/`
-3. Add the new app to `infra/argocd/envs/dev/kustomization.yaml` and `infra/argocd/envs/prod/kustomization.yaml`
-4. Push to Git — ArgoCD auto-syncs
+3. Push to Git — ArgoCD auto-syncs via the env-specific Kustomize overlay
 
-For TLS: cert-manager issues Let's Encrypt certificates automatically when an `Ingress` resource has the `cert-manager.io/cluster-issuer: letsencrypt` annotation.
+For TLS: add `cert-manager.io/cluster-issuer: letsencrypt` annotation to your Ingress.
 
 ---
 
@@ -150,11 +167,11 @@ task destroy
 # Prod
 task destroy:prod
 ```
-This destroys all cloud resources. Sealed Secrets keys are lost — re-sealing all secrets is required on next bootstrap.
+Destroys all Hetzner resources. Sealed Secrets keys are lost — re-sealing required on next bootstrap.
 
 ---
 
-## Terraform Resource Names
+## Resource Naming
 
 Pattern: `{env}-{location}-{type}[-{role}][-{index}]`
 
@@ -166,5 +183,3 @@ dev-ash-lb-ingress
 dev-ash-server-cp-01
 dev-ash-server-wk-01
 ```
-
-`env` and `location` are plain input variables — not derived from provider codes.

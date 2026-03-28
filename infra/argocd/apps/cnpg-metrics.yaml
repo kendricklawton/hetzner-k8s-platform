@@ -1,9 +1,6 @@
-# =============================================================================
 # CNPG METRICS — VMServiceScrape
-# =============================================================================
 # CloudNativePG exposes Prometheus metrics on :9187/metrics by default.
 # This VMServiceScrape tells vmagent to discover and scrape CNPG pods.
-# =============================================================================
 
 ---
 apiVersion: operator.victoriametrics.com/v1beta1

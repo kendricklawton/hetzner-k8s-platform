@@ -1,17 +1,19 @@
 #!/bin/bash
-# Shared base provisioning for all golden images:
-# apt update/upgrade, common packages, SSH hardening
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
+trap 'echo "[FATAL] base.sh error on line $LINENO — exit code $?"' ERR
 
 echo "=== Base: Waiting for cloud-init ==="
-/usr/bin/cloud-init status --wait
+# cloud-init exits code 2 on Ubuntu 24.04 Noble even on success (canonical/cloud-init#5971)
+/usr/bin/cloud-init status --wait || true
+echo "[Base] cloud-init status: $(cloud-init status 2>/dev/null || echo 'unknown')"
 
 echo "=== Base: Packages ==="
 apt-get update -y
 apt-get upgrade -y
 apt-get install -y ca-certificates curl wget jq fail2ban unattended-upgrades
+echo "[Base] Packages installed OK"
 
 echo "=== Base: SSH Hardening ==="
 systemctl enable fail2ban
@@ -21,7 +23,6 @@ sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_
 sed -i 's/^#*X11Forwarding.*/X11Forwarding no/' /etc/ssh/sshd_config
 sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
 
-# Modern ciphers/kex only — drop legacy algorithms
 cat >> /etc/ssh/sshd_config <<'SSHEOF'
 
 # Hardened crypto (CKS-aligned)
@@ -31,8 +32,8 @@ MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
 SSHEOF
 
 systemctl restart ssh || systemctl restart sshd
+echo "[Base] SSH hardened OK"
 
-# Lock sshd to localhost AFTER the restart so Packer's SSH session isn't broken.
-# On real nodes, sshd reads this on boot and only listens on 127.0.0.1.
-# All remote SSH access goes through Tailscale SSH (--ssh flag in cloud-init).
+# Lock sshd to localhost — all remote SSH access goes through Tailscale SSH.
 echo 'ListenAddress 127.0.0.1' >> /etc/ssh/sshd_config
+echo "[Base] SSH locked to localhost"

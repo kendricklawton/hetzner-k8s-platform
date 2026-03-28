@@ -5,7 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: admin@example.com  # run 'task cluster:set-email' to template from .env
+    email: admin@example.com # run 'task cluster:set-email' to template from .env
     privateKeySecretRef:
       name: letsencrypt-staging-account-key
     solvers:
@@ -20,7 +20,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@example.com  # run 'task cluster:set-email' to template from .env
+    email: admin@example.com # run 'task cluster:set-email' to template from .env
     privateKeySecretRef:
       name: letsencrypt-account-key
     solvers:

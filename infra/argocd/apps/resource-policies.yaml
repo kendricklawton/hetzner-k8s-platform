@@ -1,6 +1,4 @@
-# =============================================================================
 # RESOURCE POLICIES — LimitRange + ResourceQuota
-# =============================================================================
 # LimitRange: sets default requests/limits for containers that don't specify
 #   their own. Prevents unbounded resource consumption.
 # ResourceQuota: caps total resource consumption per namespace.
@@ -10,12 +8,9 @@
 #   - Why is a pod Pending? (quota exhausted)
 #   - Why did a pod get OOMKilled? (limit too low)
 #   - Why does admission fail? (LimitRange max exceeded)
-# =============================================================================
 
 
-# =============================================================================
 # app — user workloads (Go/Rust APIs, sidecars)
-# =============================================================================
 
 ---
 apiVersion: v1
@@ -62,9 +57,7 @@ spec:
     configmaps: "30"
 
 
-# =============================================================================
 # platform-system — core platform services (higher headroom for infra)
-# =============================================================================
 
 ---
 apiVersion: v1
@@ -111,9 +104,7 @@ spec:
     configmaps: "50"
 
 
-# =============================================================================
 # observability — Loki + VictoriaMetrics are memory-heavy
-# =============================================================================
 
 ---
 apiVersion: v1
@@ -158,9 +149,7 @@ spec:
     persistentvolumeclaims: "10"
 
 
-# =============================================================================
 # cnpg-system — PostgreSQL is memory-hungry; give it room
-# =============================================================================
 
 ---
 apiVersion: v1

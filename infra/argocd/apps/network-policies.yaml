@@ -1,6 +1,4 @@
-# =============================================================================
 # NAMESPACE ISOLATION — NetworkPolicy
-# =============================================================================
 # Strategy: default-deny ingress per namespace, then allow-list explicitly.
 # Egress is left open (all allowed) — restrict further per-workload if needed.
 # Cilium implements the standard NetworkPolicy spec; these are portable.
@@ -10,12 +8,9 @@
 #
 # CNPA/CNPE relevance: NetworkPolicy is a core exam topic. Understanding
 # podSelector vs namespaceSelector AND/OR semantics is directly tested.
-# =============================================================================
 
 
-# =============================================================================
 # app — user workloads
-# =============================================================================
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -86,9 +81,7 @@ spec:
     - {}
 
 
-# =============================================================================
 # platform-system — core platform services (registry, platform API)
-# =============================================================================
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -175,9 +168,7 @@ spec:
     - {}
 
 
-# =============================================================================
 # observability — Grafana, Loki, VictoriaMetrics, Fluent Bit
-# =============================================================================
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -247,9 +238,7 @@ spec:
     - {}
 
 
-# =============================================================================
 # cnpg-system — CloudNativePG operator + managed PostgreSQL clusters
-# =============================================================================
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -275,8 +264,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   podSelector:
-    matchLabels:
-      cnpg.io/cluster: ""  # matches CNPG-managed DB pods (any cluster label present)
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
   policyTypes:
     - Ingress
   ingress:

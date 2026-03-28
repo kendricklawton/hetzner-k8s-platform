@@ -18,6 +18,3 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 handler: runsc
-scheduling:
-  nodeClassification:
-    tolerations: []

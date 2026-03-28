@@ -6,7 +6,7 @@ metadata:
   labels:
     platform.io/managed-by: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: default
   source:

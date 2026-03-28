@@ -1,32 +1,36 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudnative-pg
+  name: kyverno
   namespace: argocd
   labels:
     platform.io/managed-by: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
-    repoURL: "https://cloudnative-pg.github.io/charts"
-    chart: cloudnative-pg
-    targetRevision: "0.23.0"
+    repoURL: "https://kyverno.github.io/kyverno/"
+    chart: kyverno
+    targetRevision: "3.7.1"
     helm:
-      parameters:
-        # Operator watches all namespaces — databases live in platform-system
-        - name: config.clusterWide
-          value: "true"
+      values: |
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 384Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: cnpg-system
+    namespace: kyverno
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false
+      - CreateNamespace=true
       - ServerSideApply=true
     retry:
       limit: 5

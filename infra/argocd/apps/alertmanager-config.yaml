@@ -1,6 +1,4 @@
-# =============================================================================
 # ALERTMANAGER CONFIG — Base configuration Secret (PLACEHOLDER ONLY)
-# =============================================================================
 # Referenced by alertmanager.spec.configSecret in the VM k8s-stack.
 #
 # ⚠ WARNING: This plain Secret exists only for initial bootstrap with dummy
@@ -15,7 +13,6 @@
 #   4. Commit and push — ArgoCD will sync the sealed version
 #
 # NEVER commit real webhook URLs or API keys in this plaintext form.
-# =============================================================================
 
 ---
 apiVersion: v1

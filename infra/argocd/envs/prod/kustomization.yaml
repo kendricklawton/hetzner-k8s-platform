@@ -2,64 +2,31 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../apps/200-argocd-namespaces.yaml
-  - ../../apps/205-runtime-classes.yaml
-  - ../../apps/210-cert-manager.yaml
-  - ../../apps/211-cluster-issuer.yaml
-  - ../../apps/215-network-policies.yaml
-  - ../../apps/216-pod-disruption-budgets.yaml
-  - ../../apps/220-resource-policies.yaml
-  - ../../apps/225-ingress-nginx.yaml
-  - ../../apps/230-cnpg.yaml
-  - ../../apps/240-rustfs.yaml
-  - ../../apps/300-fluent-bit.yaml
-  - ../../apps/310-loki.yaml
-  - ../../apps/315-alertmanager-config.yaml
-  - ../../apps/320-victoria-metrics.yaml
-  - ../../apps/321-vm-alert-rules.yaml
-  - ../../apps/325-cnpg-metrics.yaml
-  - ../../apps/329-grafana-secret.yaml
-  - ../../apps/330-grafana.yaml
-  - ../../apps/400-etcd-backup.yaml
-  - ../../apps/410-rustfs-gcs-backup.yaml
-
-# App namespace — change APP_NAMESPACE to set your project name.
-# Replacements propagate the name to all NetworkPolicies, LimitRanges, and ResourceQuotas.
-# Usage: task cluster:set-app-namespace ENV=prod NAME=my-project
-configMapGenerator:
-  - name: app-namespace-config
-    namespace: argocd
-    options:
-      disableNameSuffixHash: true
-    literals:
-      - APP_NAMESPACE=app
-
-replacements:
-  - source:
-      kind: ConfigMap
-      name: app-namespace-config
-      namespace: argocd
-      fieldPath: data.APP_NAMESPACE
-    targets:
-      - select:
-          kind: Namespace
-          name: app
-        fieldPaths:
-          - metadata.name
-      - select:
-          namespace: app
-        fieldPaths:
-          - metadata.namespace
-      - select:
-          kind: NetworkPolicy
-          name: allow-from-app
-          namespace: platform-system
-        fieldPaths:
-          - spec.ingress.0.from.0.namespaceSelector.matchLabels.[kubernetes.io/metadata.name]
+  - ../../apps/alertmanager-config.yaml
+  - ../../apps/cert-manager.yaml
+  - ../../apps/cluster-issuer.yaml
+  - ../../apps/cnpg-metrics.yaml
+  - ../../apps/cnpg.yaml
+  - ../../apps/etcd-backup.yaml
+  - ../../apps/external-secrets.yaml
+  - ../../apps/fluent-bit.yaml
+  - ../../apps/sealed-secrets.yaml
+  - ../../apps/grafana.yaml
+  - ../../apps/ingress-nginx.yaml
+  - ../../apps/kyverno.yaml
+  - ../../apps/loki.yaml
+  - ../../apps/namespaces.yaml
+  - ../../apps/network-policies.yaml
+  - ../../apps/opencost.yaml
+  - ../../apps/pod-disruption-budgets.yaml
+  - ../../apps/resource-policies.yaml
+  - ../../apps/runtime-classes.yaml
+  - ../../apps/rustfs.yaml
+  - ../../apps/trivy-operator.yaml
+  - ../../apps/victoria-metrics.yaml
+  - ../../apps/vm-alert-rules.yaml
 
 patches:
-  # Hetzner CCM: adopt the Terraform-managed LB by name.
-  # Name follows pattern: {env}-{location}-lb-ingress (see main.tf).
   - target:
       kind: Application
       name: ingress-nginx

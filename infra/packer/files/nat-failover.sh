@@ -15,7 +15,8 @@ FAIL_THRESHOLD=3
 CHECK_INTERVAL=10
 IS_ACTIVE=false
 
-echo "[failover] Watchdog started at $(date) — monitoring primary at $PRIMARY_IP" >> "$LOG"
+echo "[failover] Watchdog started at $(date)" >> "$LOG"
+echo "[failover] Monitoring primary at $PRIMARY_IP, my IP is $MY_IP" >> "$LOG"
 
 while true; do
 	if ping -c 1 -W 3 "$PRIMARY_IP" > /dev/null 2>&1; then
@@ -25,19 +26,21 @@ while true; do
 		echo "[failover] Primary unreachable ($FAIL_COUNT/$FAIL_THRESHOLD) at $(date)" >> "$LOG"
 
 		if [ "$FAIL_COUNT" -ge "$FAIL_THRESHOLD" ] && [ "$IS_ACTIVE" = false ]; then
-			echo "[failover] TAKING OVER — switching route to $MY_IP at $(date)" >> "$LOG"
+			echo "[failover] TAKING OVER — deleting old route and switching to $MY_IP at $(date)" >> "$LOG"
 
-			curl -sf -X POST "$API/networks/$NETWORK_ID/actions/delete_route" \
+			DELETE_RESP=$(curl -sf -X POST "$API/networks/$NETWORK_ID/actions/delete_route" \
 				-H "Authorization: Bearer $TOKEN" \
 				-H "Content-Type: application/json" \
-				-d "{\"destination\":\"0.0.0.0/0\",\"gateway\":\"$PRIMARY_IP\"}" >> "$LOG" 2>&1 || true
+				-d "{\"destination\":\"0.0.0.0/0\",\"gateway\":\"$PRIMARY_IP\"}" 2>&1 || echo "DELETE FAILED")
+			echo "[failover] Delete route response: $DELETE_RESP" >> "$LOG"
 
 			sleep 2
 
-			curl -sf -X POST "$API/networks/$NETWORK_ID/actions/add_route" \
+			ADD_RESP=$(curl -sf -X POST "$API/networks/$NETWORK_ID/actions/add_route" \
 				-H "Authorization: Bearer $TOKEN" \
 				-H "Content-Type: application/json" \
-				-d "{\"destination\":\"0.0.0.0/0\",\"gateway\":\"$MY_IP\"}" >> "$LOG" 2>&1
+				-d "{\"destination\":\"0.0.0.0/0\",\"gateway\":\"$MY_IP\"}" 2>&1 || echo "ADD FAILED")
+			echo "[failover] Add route response: $ADD_RESP" >> "$LOG"
 
 			IS_ACTIVE=true
 			echo "[failover] Route switched to self at $(date)" >> "$LOG"

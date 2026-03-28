@@ -3,47 +3,100 @@ set -euo pipefail
 
 LOG="/var/log/k8s-bootstrap.log"
 exec > >(tee -a "$LOG") 2>&1
-echo "=== K8s Bootstrap Started at $(date) — ROLE=$ROLE ==="
+
+# Trap errors with line number
+trap 'echo "[FATAL] Error on line $LINENO — exit code $?" >> "$LOG"' ERR
 
 source /etc/k8s-bootstrap.env
 
-# =============================================================
+echo "=== K8s Bootstrap Started at $(date) ==="
+echo "[Bootstrap] ROLE=$ROLE"
+echo "[Bootstrap] HOSTNAME=$HOSTNAME"
+echo "[Bootstrap] NETWORK_GATEWAY=${NETWORK_GATEWAY:-not set}"
+
 # SHARED: Network + Tailscale + Metadata (all roles)
-# =============================================================
 
-# 1. SDN routing — metadata + default via NAT gateway
-echo "[Bootstrap] Ensuring SDN routing paths..."
-DEFAULT_DEV=$(ip -4 route show to default | awk '{print $5}' | head -1)
-if [ -n "$DEFAULT_DEV" ]; then
-	ip route replace 169.254.169.254 via "$NETWORK_GATEWAY" dev "$DEFAULT_DEV" onlink || true
-	ip route replace default via "$NETWORK_GATEWAY" dev "$DEFAULT_DEV" onlink || true
-else
-	echo "[WARN] No default route device found, skipping route setup"
-fi
-
-# 2. Apply netplan + restart resolver
+# 1. Apply netplan + restart resolver (brings up private network interface)
+# Netplan config (baked by Packer) sets default route via 10.0.0.1 (Hetzner gateway).
+# Hetzner's network route (created by Terraform) forwards 0.0.0.0/0 to the NAT at the network layer.
+echo "[1/5 Network] Removing cloud-init netplan (conflicts with baked config)..."
+rm -f /etc/netplan/50-cloud-init.yaml
+echo "[1/5 Network] Applying netplan..."
 netplan generate
 netplan apply
-sleep 5
+sleep 2
+systemctl restart systemd-networkd
+sleep 3
 systemctl restart systemd-resolved || true
 
-# 3. Join Tailscale
-echo "[Bootstrap] Joining Tailscale..."
+echo "[1/5 Network] Interfaces:"
+ip -4 addr show | grep -E 'inet |^[0-9]'
+echo "[1/5 Network] Routes:"
+ip route show
+echo "[1/5 Network] DNS:"
+resolvectl status 2>/dev/null | head -5 || cat /etc/resolv.conf
+
+# 2. Add metadata route via Hetzner gateway
+echo "[2/5 Routes] Adding metadata route..."
+DEFAULT_DEV=$(ip -4 route show to default | awk '{print $5}' | head -1)
+if [ -z "$DEFAULT_DEV" ]; then
+	echo "[2/5 Routes] No default route found, looking for 10.0.x.x interface..."
+	DEFAULT_DEV=$(ip -o -4 addr show | grep '10\.0\.' | awk '{print $2}' | head -1)
+fi
+if [ -n "$DEFAULT_DEV" ]; then
+	ip route replace 169.254.169.254 via 10.0.0.1 dev "$DEFAULT_DEV" onlink || true
+	echo "[2/5 Routes] Metadata route set on $DEFAULT_DEV"
+else
+	echo "[FATAL] No network device found"
+	echo "[FATAL] ip addr output:"
+	ip addr show
+	exit 1
+fi
+
+# 3. Verify internet connectivity via NAT
+echo "[3/5 Internet] Testing connectivity..."
+for i in $(seq 1 12); do
+	if curl -sf --connect-timeout 3 https://1.1.1.1 >/dev/null 2>&1; then
+		echo "[3/5 Internet] OK — internet reachable via NAT"
+		break
+	fi
+	echo "[3/5 Internet] Attempt $i/12 failed — retrying in 5s..."
+	[ "$i" -eq 12 ] && {
+		echo "[FATAL] No internet after 60s"
+		echo "[FATAL] Default route: $(ip route show default)"
+		echo "[FATAL] Can reach gateway? $(ping -c 1 -W 2 10.0.0.1 2>&1 || echo 'no')"
+		echo "[FATAL] Can reach NAT? $(ping -c 1 -W 2 ${NETWORK_GATEWAY:-10.0.1.2} 2>&1 || echo 'no')"
+		exit 1
+	}
+	sleep 5
+done
+
+# 4. Join Tailscale
+echo "[4/5 Tailscale] Waiting for tailscaled socket..."
 for i in $(seq 1 24); do
-	[ -S /run/tailscale/tailscaled.sock ] && break
+	if [ -S /run/tailscale/tailscaled.sock ]; then
+		echo "[4/5 Tailscale] Socket ready (attempt $i)"
+		break
+	fi
+	[ "$i" -eq 24 ] && { echo "[FATAL] tailscaled socket not found after 120s"; systemctl status tailscaled --no-pager || true; exit 1; }
 	sleep 5
 done
 TS_TAG="tag:k8s-worker"
 [ "$ROLE" = "cp-init" ] || [ "$ROLE" = "cp-join" ] && TS_TAG="tag:k8s-cp"
+echo "[4/5 Tailscale] Joining as $HOSTNAME with tag $TS_TAG..."
+TS_ATTEMPTS=0
 until tailscale up \
 	--authkey="$TAILSCALE_AUTH_KEY" \
 	--ssh --hostname="$HOSTNAME" --advertise-tags="$TS_TAG" --reset >> "$LOG" 2>&1; do
+	TS_ATTEMPTS=$((TS_ATTEMPTS+1))
+	echo "[4/5 Tailscale] Join failed (attempt $TS_ATTEMPTS) — retrying in 5s..."
+	[ "$TS_ATTEMPTS" -ge 24 ] && { echo "[FATAL] Tailscale join failed after 24 attempts"; tailscale status 2>&1 || true; exit 1; }
 	sleep 5
 done
-echo "[Bootstrap] Tailscale joined successfully"
+echo "[4/5 Tailscale] Joined successfully — $(tailscale ip -4 2>/dev/null || echo 'no IP yet')"
 
-# 4. Wait for Hetzner metadata service
-echo "[Bootstrap] Waiting for Hetzner metadata service..."
+# 5. Wait for Hetzner metadata service
+echo "[5/5 Metadata] Waiting for Hetzner metadata service..."
 HCLOUD_ID=""
 for i in $(seq 1 30); do
 	HCLOUD_ID=$(curl -sf -m 3 http://169.254.169.254/hetzner/v1/metadata/instance-id 2>/dev/null || true)
@@ -73,9 +126,7 @@ for i in $(seq 1 30); do
 done
 [ -z "$TS_IP" ] && echo "[WARN] Tailscale IP not available"
 
-# =============================================================
 # ROLE-SPECIFIC BOOTSTRAP
-# =============================================================
 case "$ROLE" in
 
 # -------------------------------------------------------------
@@ -215,9 +266,9 @@ EOF
 	}
 
 	# Validate MTU + Install Cilium
-	IFACE_MTU=$(ip -o link show dev eth0 2>/dev/null | grep -oP 'mtu \K[0-9]+' || echo "unknown")
+	IFACE_MTU=$(ip -o link show dev enp7s0 2>/dev/null | grep -oP 'mtu \K[0-9]+' || echo "unknown")
 	if [ "$IFACE_MTU" != "unknown" ] && [ "$IFACE_MTU" != "$HCLOUD_MTU" ]; then
-		echo "[WARN] MTU mismatch: interface eth0 has MTU $IFACE_MTU but Cilium configured with $HCLOUD_MTU"
+		echo "[WARN] MTU mismatch: interface enp7s0 has MTU $IFACE_MTU but Cilium configured with $HCLOUD_MTU"
 	else
 		echo "[Bootstrap] MTU validated: $IFACE_MTU (matches configured $HCLOUD_MTU)"
 	fi
@@ -239,7 +290,9 @@ EOF
 		--set operator.replicas=1 \
 		--set hubble.enabled=true \
 		--set hubble.relay.enabled=true \
-		--set hubble.ui.enabled=false
+		--set hubble.ui.enabled=true \
+		--set encryption.enabled=true \
+		--set encryption.type=wireguard
 
 	echo "[Bootstrap] Waiting for Cilium to be ready..."
 	kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
@@ -323,6 +376,8 @@ EOF
 	echo "[Bootstrap] Verifying cluster health..."
 	for i in $(seq 1 20); do
 		if kubectl get nodes 2>/dev/null | grep -q "$HOSTNAME"; then
+			echo "[Bootstrap] Shutting down CA hash server..."
+			kill $(lsof -t -i:9099) 2>/dev/null || true
 			echo "=== K8s Control Plane Bootstrap Complete at $(date) ==="
 			kubectl get nodes
 			exit 0
@@ -393,6 +448,8 @@ nodeRegistration:
   kubeletExtraArgs:
     - name: cloud-provider
       value: "external"
+    - name: provider-id
+      value: "hcloud://$HCLOUD_ID"
 controlPlane:
   certificateKey: "$KUBEADM_CERT_KEY"
 ---
@@ -519,12 +576,45 @@ worker)
 		sleep 5
 	done
 
+	# Generate kubeadm join config
+	cat > /etc/kubernetes/kubeadm-config.yaml << EOF
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: "$KUBERNETES_API_LB_IP:6443"
+    token: "$KUBEADM_TOKEN"
+    caCertHashes:
+      - "$CA_HASH"
+nodeRegistration:
+  name: "$HOSTNAME"
+  criSocket: "unix:///run/containerd/containerd.sock"
+  kubeletExtraArgs:
+    - name: cloud-provider
+      value: "external"
+    - name: provider-id
+      value: "hcloud://$HCLOUD_ID"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
+anonymous:
+  enabled: false
+authentication:
+  webhook:
+    enabled: true
+authorization:
+  mode: Webhook
+readOnlyPort: 0
+rotateCertificates: true
+protectKernelDefaults: true
+EOF
+	chmod 0600 /etc/kubernetes/kubeadm-config.yaml
+
 	echo "[Bootstrap] Running kubeadm join (worker)..."
-	kubeadm join "$KUBERNETES_API_LB_IP:6443" \
-		--token "$KUBEADM_TOKEN" \
-		--discovery-token-ca-cert-hash "$CA_HASH" \
-		--node-name "$HOSTNAME" \
-		--cri-socket "unix:///run/containerd/containerd.sock" \
+	kubeadm join --config /etc/kubernetes/kubeadm-config.yaml \
 		--ignore-preflight-errors=NumCPU
 
 	# Verify kubelet is active
@@ -538,32 +628,8 @@ worker)
 		sleep 5
 	done
 
-	# Poll API server for node Ready status
-	echo "[Bootstrap] Polling API server for node Ready status..."
-	for i in $(seq 1 60); do
-		NODE_STATUS=$(curl -sk \
-			-H "Authorization: Bearer $KUBEADM_TOKEN" \
-			"https://$KUBERNETES_API_LB_IP:6443/api/v1/nodes/$HOSTNAME" 2>/dev/null \
-			| python3 -c "
-import sys, json
-try:
-    node = json.load(sys.stdin)
-    for c in node.get('status',{}).get('conditions',[]):
-        if c['type'] == 'Ready':
-            print(c['status'])
-            break
-except: pass
-" 2>/dev/null || true)
-		if [ "$NODE_STATUS" = "True" ]; then
-			echo "=== K8s Worker Bootstrap Complete at $(date) ==="
-			exit 0
-		fi
-		[ "$((i % 10))" -eq 0 ] && echo "[Bootstrap] Node not Ready yet (attempt $i/60)..."
-		sleep 5
-	done
-	echo "[ERROR] Worker node $HOSTNAME not Ready after 5 minutes"
-	journalctl -u kubelet --no-pager --since "5min ago" | tail -50
-	exit 1
+	echo "=== K8s Worker Bootstrap Complete at $(date) ==="
+	exit 0
 	;;
 
 *)

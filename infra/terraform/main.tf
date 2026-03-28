@@ -1,87 +1,4 @@
-terraform {
-  required_version = ">= 1.5.0"
-  backend "gcs" {}
-  required_providers {
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.45"
-    }
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 6.0"
-    }
-    tailscale = {
-      source  = "tailscale/tailscale"
-      version = "~> 0.17"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.9.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.5.1"
-    }
-  }
-}
-
-# VARIABLES
-variable "env" { type = string }               # dev | prod
-variable "location" { type = string }          # Hetzner datacenter: ash, hil, nbg1, fsn1, hel1
-variable "network_zone" { type = string }      # Hetzner network zone: us-east, eu-central, ap-southeast
-variable "token" { sensitive = true }          # Full access — used by Terraform only
-variable "token_readonly" { sensitive = true } # Read-only + volumes — injected into cluster for CCM/CSI
-variable "ssh_key_name" { type = string }
-
-# Server Types
-variable "cp_server_type" { type = string }
-variable "worker_server_type" { type = string }
-variable "nat_gateway_type" { type = string }
-variable "load_balancer_type" { type = string }
-variable "git_repo_url" { type = string }
-
-# Tailscale
-variable "tailscale_api_key" { sensitive = true }
-variable "tailscale_tailnet" { type = string }
-
-# Kubernetes
-variable "kubernetes_version" { type = string }
-variable "cilium_version" { type = string }
-variable "argocd_version" { type = string }
-variable "sealed_secrets_version" { type = string }
-
-# Hetzner cloud integration
-variable "ccm_version" { type = string }
-variable "csi_version" { type = string }
-variable "ingress_nginx_version" { type = string }
-variable "hcloud_mtu" {
-  type    = number
-  default = 1450
-}
-
-provider "hcloud" {
-  token = var.token
-}
-
-# GCP — backup buckets live beside the Terraform state bucket
-variable "gcp_project" { type = string }
-variable "gcp_region" {
-  type    = string
-  default = "us-central1"
-}
-
-provider "google" {
-  project = var.gcp_project
-  region  = var.gcp_region
-}
-
-provider "tailscale" {
-  api_key = var.tailscale_api_key
-  tailnet = var.tailscale_tailnet
-}
-
 locals {
-  # {env}-{location} — both are plain input variables.
   # Pattern: {env}-{location}-{type}[-{role}][-{index}]
   # Examples: dev-ash-server-cp-01, prod-ash-lb-api
   prefix = "${var.env}-${var.location}"
@@ -142,27 +59,30 @@ resource "random_id" "encryption_key" {
 
 # --- TAILSCALE PRE-AUTH KEYS ---
 resource "tailscale_tailnet_key" "nat" {
-  reusable      = false
+  reusable      = true
   ephemeral     = false
   preauthorized = true
   expiry        = 3600
   description   = "${local.prefix}-nat"
+  tags          = ["tag:nat"]
 }
 
 resource "tailscale_tailnet_key" "cp" {
-  reusable      = false
+  reusable      = true
   ephemeral     = false
   preauthorized = true
   expiry        = 3600
   description   = "${local.prefix}-cp"
+  tags          = ["tag:k8s-cp"]
 }
 
 resource "tailscale_tailnet_key" "worker" {
-  reusable      = false
+  reusable      = true
   ephemeral     = false
   preauthorized = true
   expiry        = 3600
   description   = "${local.prefix}-worker"
+  tags          = ["tag:k8s-worker"]
 }
 
 # --- DATA SOURCES ---
@@ -186,7 +106,7 @@ resource "hcloud_network" "main" {
   ip_range = "10.0.0.0/16"
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -227,7 +147,7 @@ resource "hcloud_server" "nat" {
   )
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     ignore_changes  = [user_data]
   }
 }
@@ -282,7 +202,7 @@ resource "hcloud_load_balancer" "api" {
   location           = var.location
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -313,7 +233,7 @@ resource "hcloud_load_balancer" "ingress" {
   location           = var.location
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -367,7 +287,7 @@ resource "hcloud_server" "control_plane_init" {
   )
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     ignore_changes  = [user_data]
   }
 
@@ -469,4 +389,4 @@ resource "hcloud_server" "worker" {
 # Ingress LB targets and services are managed by Hetzner CCM via
 # annotations on the ingress-nginx LoadBalancer Service. CCM adopts
 # this LB by name and configures NodePort routing + proxy protocol.
-# See: infra/argocd/apps/225-ingress-nginx.yaml
+# See: infra/argocd/apps/ingress-nginx.yaml
