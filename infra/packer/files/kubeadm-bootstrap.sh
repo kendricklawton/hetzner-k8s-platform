@@ -294,7 +294,7 @@ EOF
 		--set k8sServiceHost="$API_ENDPOINT_NAME" \
 		--set k8sServicePort=6443 \
 		--set kubeProxyReplacement=true \
-		--set mtu="$CILIUM_MTU" \
+		--set mtu="$HCLOUD_MTU" \
 		--set routingMode=native \
 		--set autoDirectNodeRoutes=false \
 		--set ipv4NativeRoutingCIDR="10.0.0.0/8" \

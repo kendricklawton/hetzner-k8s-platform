@@ -262,7 +262,7 @@ resource "hcloud_server" "control_plane_init" {
     ip         = local.cp_map[local.init_cp_name]
   }
 
-  user_data = replace(replace(replace(replace(replace(replace(replace(
+  user_data = replace(replace(replace(replace(replace(replace(
     replace(replace(replace(replace(replace(replace(
       replace(replace(replace(replace(replace(replace(
         file("${path.module}/templates/cloud-init-cp-init.yaml"),
@@ -277,7 +277,6 @@ resource "hcloud_server" "control_plane_init" {
       "__ARGOCD_APPS_PATH__", "infra/argocd/envs/${var.env}"),
       "__CILIUM_VERSION__", var.cilium_version),
       "__HCLOUD_MTU__", tostring(var.hcloud_mtu)),
-      "__CILIUM_MTU__", tostring(var.cilium_mtu)),
     "__ARGOCD_VERSION__", var.argocd_version),
     "__HCLOUD_TOKEN_READONLY__", var.token_readonly),
     "__HCLOUD_NETWORK_NAME__", hcloud_network.main.name),
