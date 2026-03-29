@@ -103,7 +103,7 @@ data "hcloud_ssh_key" "admin" {
 # --- NETWORK ---
 resource "hcloud_network" "main" {
   name     = "${local.prefix}-net"
-  ip_range = "10.0.0.0/16"
+  ip_range = "10.0.0.0/8"
 
   lifecycle {
     prevent_destroy = false

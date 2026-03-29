@@ -10,18 +10,18 @@ resource "hcloud_firewall" "nat" {
     direction  = "in"
     protocol   = "tcp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "icmp"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # Tailscale direct + WireGuard fallback
@@ -69,18 +69,18 @@ resource "hcloud_firewall" "cp" {
     direction  = "in"
     protocol   = "tcp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "icmp"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # Kubernetes API — only reachable from private network + LB.
@@ -89,7 +89,7 @@ resource "hcloud_firewall" "cp" {
     direction  = "in"
     protocol   = "tcp"
     port       = "6443"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # etcd peer communication (CP nodes only)
@@ -97,7 +97,7 @@ resource "hcloud_firewall" "cp" {
     direction  = "in"
     protocol   = "tcp"
     port       = "2379-2380"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # Tailscale direct + WireGuard fallback
@@ -145,18 +145,18 @@ resource "hcloud_firewall" "worker" {
     direction  = "in"
     protocol   = "tcp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "udp"
     port       = "any"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
   rule {
     direction  = "in"
     protocol   = "icmp"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # NodePort range (ingress traffic via LB)
@@ -164,7 +164,7 @@ resource "hcloud_firewall" "worker" {
     direction  = "in"
     protocol   = "tcp"
     port       = "30000-32767"
-    source_ips = ["10.0.0.0/16"]
+    source_ips = ["10.0.0.0/8"]
   }
 
   # HTTP/HTTPS (ingress-nginx on workers — IPv6 disabled on all nodes)
