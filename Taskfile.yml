@@ -25,6 +25,7 @@ vars:
   # ArgoCD-managed component versions live in infra/argocd/apps/*.yaml.
   KUBERNETES_VERSION: "v1.32.13"
   CILIUM_VERSION: "1.17.4"
+  CILIUM_MTU: "1370"  # Hetzner physical MTU (1450) minus WireGuard overhead (80)
   INGRESS_NGINX_VERSION: "4.15.1"
   SEALED_SECRETS_VERSION: "2.18.4"
   ARGOCD_VERSION: "7.8.23"
@@ -85,6 +86,7 @@ tasks:
       TF_VAR_tailscale_tailnet: "{{.TAILSCALE_TAILNET}}"
       TF_VAR_kubernetes_version: "{{.KUBERNETES_VERSION}}"
       TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
+      TF_VAR_cilium_mtu: "{{.CILIUM_MTU}}"
       TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
       TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
       TF_VAR_ccm_version: "{{.HETZNER_CCM_VERSION}}"

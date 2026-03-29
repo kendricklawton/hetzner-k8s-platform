@@ -134,7 +134,7 @@ done
 API_ENDPOINT_NAME="api.platform.local"
 echo "[Bootstrap] Configuring local DNS resolution for API server..."
 if [ "$ROLE" = "cp-init" ]; then
-	echo "127.0.0.1 $API_ENDPOINT_NAME" >> /etc/hosts
+	echo "$NODE_PRIVATE_IP $API_ENDPOINT_NAME" >> /etc/hosts
 elif [ "$ROLE" = "cp-join" ]; then
 	echo "$CP_INIT_PRIVATE_IP $API_ENDPOINT_NAME" >> /etc/hosts
 elif [ "$ROLE" = "worker" ]; then
@@ -294,7 +294,7 @@ EOF
 		--set k8sServiceHost="$API_ENDPOINT_NAME" \
 		--set k8sServicePort=6443 \
 		--set kubeProxyReplacement=true \
-		--set mtu="$HCLOUD_MTU" \
+		--set mtu="$CILIUM_MTU" \
 		--set routingMode=native \
 		--set autoDirectNodeRoutes=false \
 		--set ipv4NativeRoutingCIDR="10.0.0.0/8" \
@@ -363,7 +363,7 @@ EOF
 		--version "$ARGOCD_VERSION" \
 		--namespace argocd \
 		--set server.insecure=true \
-		--set redisSecretInit.enabled=false \
+		--set redis.secretInit.enabled=false \
 		--timeout 10m
 
 	echo "[Bootstrap] Waiting for ArgoCD server to be ready..."

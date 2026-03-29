@@ -29,3 +29,7 @@ variable "hcloud_mtu" {
   type    = number
   default = 1450
 }
+variable "cilium_mtu" {
+  type    = number
+  default = 1370
+}
