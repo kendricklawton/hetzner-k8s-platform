@@ -127,6 +127,20 @@ done
 [ -z "$TS_IP" ] && echo "[WARN] Tailscale IP not available"
 
 # ROLE-SPECIFIC BOOTSTRAP
+
+# Hetzner LBs do not support hairpin routing — CP nodes cannot reach the API
+# through the LB because they are backend targets of that same LB.
+# Use a local DNS alias and point it at the right IP per role.
+API_ENDPOINT_NAME="api.platform.local"
+echo "[Bootstrap] Configuring local DNS resolution for API server..."
+if [ "$ROLE" = "cp-init" ]; then
+	echo "127.0.0.1 $API_ENDPOINT_NAME" >> /etc/hosts
+elif [ "$ROLE" = "cp-join" ]; then
+	echo "$CP_INIT_PRIVATE_IP $API_ENDPOINT_NAME" >> /etc/hosts
+elif [ "$ROLE" = "worker" ]; then
+	echo "$KUBERNETES_API_LB_IP $API_ENDPOINT_NAME" >> /etc/hosts
+fi
+
 case "$ROLE" in
 
 # -------------------------------------------------------------
@@ -152,7 +166,7 @@ EOF
 	chmod 0600 /etc/kubernetes/encryption-config.yaml
 
 	# Generate kubeadm config
-	CERT_SANS="\"$HOSTNAME\", \"$KUBERNETES_API_LB_IP\", \"$NODE_PRIVATE_IP\", \"127.0.0.1\""
+	CERT_SANS="\"$HOSTNAME\", \"$KUBERNETES_API_LB_IP\", \"$API_ENDPOINT_NAME\", \"$NODE_PRIVATE_IP\", \"127.0.0.1\""
 	[ -n "$TS_IP" ] && CERT_SANS="$CERT_SANS, \"$TS_IP\""
 
 	cat > /etc/kubernetes/kubeadm-config.yaml << EOF
@@ -174,7 +188,7 @@ nodeRegistration:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-controlPlaneEndpoint: "$KUBERNETES_API_LB_IP:6443"
+controlPlaneEndpoint: "$API_ENDPOINT_NAME:6443"
 apiServer:
   extraArgs:
     - name: audit-policy-file
@@ -215,7 +229,6 @@ etcd:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
-containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
 anonymous:
   enabled: false
 authentication:
@@ -225,7 +238,7 @@ authorization:
   mode: Webhook
 readOnlyPort: 0
 rotateCertificates: true
-protectKernelDefaults: true
+protectKernelDefaults: false
 EOF
 	chmod 0600 /etc/kubernetes/kubeadm-config.yaml
 
@@ -278,7 +291,7 @@ EOF
 	helm_retry helm install cilium cilium/cilium \
 		--version "$CILIUM_VERSION" \
 		--namespace kube-system \
-		--set k8sServiceHost="$KUBERNETES_API_LB_IP" \
+		--set k8sServiceHost="$API_ENDPOINT_NAME" \
 		--set k8sServicePort=6443 \
 		--set kubeProxyReplacement=true \
 		--set mtu="$HCLOUD_MTU" \
@@ -291,6 +304,7 @@ EOF
 		--set hubble.enabled=true \
 		--set hubble.relay.enabled=true \
 		--set hubble.ui.enabled=true \
+		--set devices=enp7s0 \
 		--set encryption.enabled=true \
 		--set encryption.type=wireguard
 
@@ -342,7 +356,8 @@ EOF
 	helm_retry helm install argocd argo/argo-cd \
 		--version "$ARGOCD_VERSION" \
 		--namespace argocd \
-		--set server.insecure=true
+		--set server.insecure=true \
+		--timeout 10m
 
 	echo "[Bootstrap] Waiting for ArgoCD server to be ready..."
 	kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
@@ -429,7 +444,7 @@ EOF
 	fi
 
 	# Generate kubeadm join config
-	CERT_SANS="\"$HOSTNAME\", \"$KUBERNETES_API_LB_IP\", \"$NODE_PRIVATE_IP\", \"127.0.0.1\""
+	CERT_SANS="\"$HOSTNAME\", \"$KUBERNETES_API_LB_IP\", \"$API_ENDPOINT_NAME\", \"$NODE_PRIVATE_IP\", \"127.0.0.1\""
 	[ -n "$TS_IP" ] && CERT_SANS="$CERT_SANS, \"$TS_IP\""
 
 	cat > /etc/kubernetes/kubeadm-config.yaml << EOF
@@ -438,7 +453,7 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "$KUBERNETES_API_LB_IP:6443"
+    apiServerEndpoint: "$API_ENDPOINT_NAME:6443"
     token: "$KUBEADM_TOKEN"
     caCertHashes:
       - "$CA_HASH"
@@ -455,7 +470,7 @@ controlPlane:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-controlPlaneEndpoint: "$KUBERNETES_API_LB_IP:6443"
+controlPlaneEndpoint: "$API_ENDPOINT_NAME:6443"
 apiServer:
   extraArgs:
     - name: audit-policy-file
@@ -496,7 +511,6 @@ etcd:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
-containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
 anonymous:
   enabled: false
 authentication:
@@ -506,14 +520,14 @@ authorization:
   mode: Webhook
 readOnlyPort: 0
 rotateCertificates: true
-protectKernelDefaults: true
+protectKernelDefaults: false
 EOF
 	chmod 0600 /etc/kubernetes/kubeadm-config.yaml
 
 	# Wait for API server
-	echo "[Bootstrap] Waiting for API server at $KUBERNETES_API_LB_IP:6443..."
+	echo "[Bootstrap] Waiting for API server at $API_ENDPOINT_NAME:6443..."
 	for i in $(seq 1 60); do
-		if curl -sk --connect-timeout 3 "https://$KUBERNETES_API_LB_IP:6443/healthz" >/dev/null 2>&1; then
+		if curl -sk --connect-timeout 3 "https://$API_ENDPOINT_NAME:6443/healthz" >/dev/null 2>&1; then
 			echo "[Bootstrap] API server is reachable"
 			break
 		fi
@@ -524,6 +538,9 @@ EOF
 	echo "[Bootstrap] Running kubeadm join (control plane)..."
 	kubeadm join --config /etc/kubernetes/kubeadm-config.yaml \
 		--ignore-preflight-errors=NumCPU
+
+	# Repoint local DNS to self now that we are a CP node
+	sed -i "s/$CP_INIT_PRIVATE_IP $API_ENDPOINT_NAME/127.0.0.1 $API_ENDPOINT_NAME/" /etc/hosts
 
 	export KUBECONFIG=/etc/kubernetes/admin.conf
 	mkdir -p /root/.kube
@@ -566,9 +583,9 @@ worker)
 	fi
 
 	# Wait for API server
-	echo "[Bootstrap] Waiting for API server at $KUBERNETES_API_LB_IP:6443..."
+	echo "[Bootstrap] Waiting for API server at $API_ENDPOINT_NAME:6443..."
 	for i in $(seq 1 60); do
-		if curl -sk --connect-timeout 3 "https://$KUBERNETES_API_LB_IP:6443/healthz" >/dev/null 2>&1; then
+		if curl -sk --connect-timeout 3 "https://$API_ENDPOINT_NAME:6443/healthz" >/dev/null 2>&1; then
 			echo "[Bootstrap] API server is reachable"
 			break
 		fi
@@ -583,7 +600,7 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "$KUBERNETES_API_LB_IP:6443"
+    apiServerEndpoint: "$API_ENDPOINT_NAME:6443"
     token: "$KUBEADM_TOKEN"
     caCertHashes:
       - "$CA_HASH"
@@ -599,7 +616,6 @@ nodeRegistration:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
-containerRuntimeEndpoint: "unix:///run/containerd/containerd.sock"
 anonymous:
   enabled: false
 authentication:
@@ -609,7 +625,7 @@ authorization:
   mode: Webhook
 readOnlyPort: 0
 rotateCertificates: true
-protectKernelDefaults: true
+protectKernelDefaults: false
 EOF
 	chmod 0600 /etc/kubernetes/kubeadm-config.yaml
 

@@ -1,6 +1,6 @@
 locals {
-  # Pattern: {env}-{location}-{type}[-{role}][-{index}]
-  # Examples: dev-ash-server-cp-01, prod-ash-lb-api
+  # Pattern: {env}-{location}-{role}[-{index}]
+  # Examples: dev-ash-cp-01, dev-ash-wk-01, prod-ash-lb-api
   prefix = "${var.env}-${var.location}"
 
   # Infrastructure IPs
@@ -18,16 +18,16 @@ locals {
   # Sticky name→IP maps for the recycle method
   cp_map = {
     for i in range(local.cluster_config[var.env].cp_count) :
-    format("${local.prefix}-server-cp-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 21)
+    format("${local.prefix}-cp-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 21)
   }
 
   worker_map = {
     for i in range(local.cluster_config[var.env].worker_count) :
-    format("${local.prefix}-server-wk-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 31)
+    format("${local.prefix}-wk-%02d", i + 1) => cidrhost("10.0.1.0/24", i + 31)
   }
 
   # Split init control plane from join control planes
-  init_cp_name = format("${local.prefix}-server-cp-%02d", 1)
+  init_cp_name = format("${local.prefix}-cp-%02d", 1)
   join_cps     = { for k, v in local.cp_map : k => v if k != local.init_cp_name }
 
   # kubeadm bootstrap token: [a-z0-9]{6}.[a-z0-9]{16}

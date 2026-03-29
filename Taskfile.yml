@@ -15,7 +15,7 @@ vars:
   HETZNER_CCM_VERSION: "1.30.1"
   HETZNER_CSI_VERSION: "2.20.0"
 
-  PROJECT_NAME: "hetzner-k8s"
+  PROJECT_NAME: "hetzner-k8s-platform"
 
   # BOOTSTRAP COMPONENT VERSIONS (installed via cloud-init, not ArgoCD)
   # Cilium, CCM, CSI, Sealed Secrets, and ArgoCD are installed during
@@ -23,11 +23,11 @@ vars:
   # They are intentionally NOT managed by ArgoCD to avoid circular
   # dependencies (ArgoCD needs Cilium networking to operate).
   # ArgoCD-managed component versions live in infra/argocd/apps/*.yaml.
-  KUBERNETES_VERSION: "v1.32.3"
+  KUBERNETES_VERSION: "v1.32.13"
   CILIUM_VERSION: "1.17.4"
-  INGRESS_NGINX_VERSION: "4.14.3"
-  SEALED_SECRETS_VERSION: "2.18.1"
-  ARGOCD_VERSION: "7.8.23"
+  INGRESS_NGINX_VERSION: "4.15.1"
+  SEALED_SECRETS_VERSION: "2.18.4"
+  ARGOCD_VERSION: "9.4.17"
 
 tasks:
   _packer_build:
@@ -98,49 +98,113 @@ tasks:
     desc: "Plan Hetzner infrastructure (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}", CMD: "plan", ARGS: "-out=tfplan" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "dev",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
+            CMD: "plan",
+            ARGS: "-out=tfplan",
+          }
 
   apply:
     desc: "Apply Hetzner infrastructure (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "dev",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
+            CMD: "apply",
+            ARGS: "-auto-approve tfplan",
+          }
 
   destroy:
     desc: "Destroy Hetzner infrastructure (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}", CMD: "destroy", ARGS: "-auto-approve" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "dev",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
+            CMD: "destroy",
+            ARGS: "-auto-approve",
+          }
 
   output:
     desc: "Show Hetzner Terraform outputs (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}", CMD: "output", ARGS: "" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "dev",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
+            CMD: "output",
+            ARGS: "",
+          }
 
   plan:prod:
     desc: "Plan Hetzner infrastructure (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}", CMD: "plan", ARGS: "-out=tfplan" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
+            CMD: "plan",
+            ARGS: "-out=tfplan",
+          }
 
   apply:prod:
     desc: "Apply Hetzner infrastructure (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
+            CMD: "apply",
+            ARGS: "-auto-approve tfplan",
+          }
 
   destroy:prod:
     desc: "Destroy Hetzner infrastructure (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}", CMD: "destroy", ARGS: "-auto-approve" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
+            CMD: "destroy",
+            ARGS: "-auto-approve",
+          }
 
   output:prod:
     desc: "Show Hetzner Terraform outputs (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}", CMD: "output", ARGS: "" }
+        vars:
+          {
+            LOCATION: "ash",
+            NETWORK_ZONE: "us-east",
+            CLOUD_ENV: "prod",
+            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
+            CMD: "output",
+            ARGS: "",
+          }
 
   # --- VALIDATION ---
   validate:

@@ -335,6 +335,9 @@ build {
       "echo 'net.bridge.bridge-nf-call-ip6tables = 1'    >> /etc/sysctl.d/99-k8s.conf",
       "echo 'fs.inotify.max_user_instances = 8192'       >> /etc/sysctl.d/99-k8s.conf",
       "echo 'fs.inotify.max_user_watches = 524288'       >> /etc/sysctl.d/99-k8s.conf",
+      "echo 'kernel.panic = 10'                          >> /etc/sysctl.d/99-k8s.conf",
+      "echo 'kernel.panic_on_oops = 1'                   >> /etc/sysctl.d/99-k8s.conf",
+      "echo 'vm.overcommit_memory = 1'                   >> /etc/sysctl.d/99-k8s.conf",
       "sysctl --system"
     ]
   }
