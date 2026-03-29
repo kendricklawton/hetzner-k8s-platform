@@ -89,7 +89,6 @@ tasks:
       TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
       TF_VAR_ccm_version: "{{.HETZNER_CCM_VERSION}}"
       TF_VAR_csi_version: "{{.HETZNER_CSI_VERSION}}"
-      TF_VAR_ingress_nginx_version: "{{.INGRESS_NGINX_VERSION}}"
     cmds:
       - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.CLOUD_ENV}}"
       - terraform {{.CMD}} {{.ARGS}}

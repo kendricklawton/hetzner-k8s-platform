@@ -25,7 +25,6 @@ variable "sealed_secrets_version" { type = string }
 # Hetzner cloud integration
 variable "ccm_version" { type = string }
 variable "csi_version" { type = string }
-variable "ingress_nginx_version" { type = string }
 variable "hcloud_mtu" {
   type    = number
   default = 1450
