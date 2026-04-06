@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: "https://victoriametrics.github.io/helm-charts"
     chart: victoria-metrics-k8s-stack
-    targetRevision: "0.14.0"
+    targetRevision: "0.72.6"
     helm:
       values: |
         # Single-node deployment — no HA needed for personal platform
@@ -34,21 +34,15 @@ spec:
         vmalert:
           enabled: true
           spec:
+            selectAllByDefault: true
             evaluationInterval: 30s
-          notifiers:
-            - selector:
-                namespaceSelector:
-                  matchNames:
-                    - observability
-                labelSelector:
-                  matchLabels:
-                    app.kubernetes.io/name: alertmanager
         alertmanager:
           enabled: true
           spec:
+            selectAllByDefault: true
             configSecret: alertmanager-config
         # kube-state-metrics — pod/deployment/node status metrics
-        kubeStateMetrics:
+        kube-state-metrics:
           enabled: true
         # Built-in scraping for k8s components
         kubelet:

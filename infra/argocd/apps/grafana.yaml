@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: "https://grafana.github.io/helm-charts"
     chart: grafana
-    targetRevision: "7.3.0"
+    targetRevision: "10.5.15"
     helm:
       values: |
         adminPassword: ""   # set via SealedSecret — this value is ignored

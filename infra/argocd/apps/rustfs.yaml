@@ -13,7 +13,7 @@ spec:
     # Uses the official RustFS helm repository
     repoURL: "https://rustfs.github.io/helm"
     chart: rustfs
-    targetRevision: "0.0.85"
+    targetRevision: "0.0.90"
     helm:
       values: |
         replicaCount: 1 # Single node mode for now, scale up as needed

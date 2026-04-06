@@ -353,17 +353,10 @@ EOF
 	echo "[Bootstrap] Installing ArgoCD $ARGOCD_VERSION..."
 	helm_retry helm repo add argo https://argoproj.github.io/argo-helm --force-update
 	kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-	# Pre-create the Redis secret to bypass the redis-secret-init pre-install job
-	# which fails on fresh clusters due to network policy blocking egress to the API server.
-	kubectl create secret generic argocd-redis \
-		-n argocd \
-		--from-literal=auth=$(openssl rand -base64 32) \
-		--dry-run=client -o yaml | kubectl apply -f -
 	helm_retry helm upgrade --install argocd argo/argo-cd \
 		--version "$ARGOCD_VERSION" \
 		--namespace argocd \
-		--set server.insecure=true \
-		--set redis.secretInit.enabled=false \
+		--set 'configs.params.server\.insecure=true' \
 		--timeout 10m
 
 	echo "[Bootstrap] Waiting for ArgoCD server to be ready..."

@@ -37,6 +37,7 @@ infra/
 ├── argocd/
 │   ├── apps/             # ArgoCD Application manifests
 │   └── envs/
+│       ├── base/         # Shared app list (all environments)
 │       ├── hetzner-dev/  # Kustomize overlay — dev patches
 │       └── hetzner-prod/ # Kustomize overlay — prod patches
 └── manifests/            # Alerts, PDBs, ClusterIssuers, Sealed Secrets
@@ -97,7 +98,7 @@ task packer
 
 Produces two Hetzner snapshots in Ashburn: `role=k8s-node` and `role=nat-gateway`.
 
-> Rebuild only when `infra/packer/hetzner/files/` changes. Terraform-only changes (versions, firewall rules, sizing) do not need a Packer rebuild.
+> Rebuild only when `infra/packer/files/` changes. Terraform-only changes (versions, firewall rules, sizing) do not need a Packer rebuild.
 
 ### 3. Provision infrastructure
 
@@ -147,7 +148,7 @@ task bootstrap \
   RUSTFS_PASSWORD='...'
 ```
 
-This runs: `cluster:fetch-cert` → `cluster:seal-all` → prints commit instructions.
+This runs: `kubeconfig` → `fetch-cert` → `seal-all` → prints commit instructions.
 
 ```sh
 git add infra/manifests/secrets/

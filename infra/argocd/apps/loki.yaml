@@ -12,9 +12,11 @@ spec:
   source:
     repoURL: "https://grafana.github.io/helm-charts"
     chart: loki
-    targetRevision: "5.43.3"
+    targetRevision: "6.55.0"
     helm:
       values: |
+        # Loki 6.x defaults to SimpleScalable mode — force SingleBinary for single-node
+        deploymentMode: SingleBinary
         loki:
           auth_enabled: false
           commonConfig:
