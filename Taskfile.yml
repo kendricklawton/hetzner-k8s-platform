@@ -3,66 +3,425 @@ version: "3"
 dotenv: [".env"]
 
 vars:
+  # Versions
   KUBERNETES_VERSION: "v1.32.13"
   CILIUM_VERSION: "1.19.2"
   SEALED_SECRETS_VERSION: "2.18.4"
   ARGOCD_VERSION: "7.8.23"
 
-includes:
-  hetzner: ./infra/taskfiles/hetzner.yml
-  cluster: ./infra/taskfiles/cluster.yml
-  validate: ./infra/taskfiles/validate.yml
+  # Hetzner server types
+  HCLOUD_UBUNTU_VERSION: "ubuntu-24.04"
+  HCLOUD_K8S_TYPE: "cpx21"
+  HCLOUD_LB_TYPE: "lb11"
+  HCLOUD_NAT_TYPE: "cpx11"
+  HCLOUD_CP_SERVER_TYPE: "cpx21"
+  HCLOUD_WORKER_SERVER_TYPE: "cpx21"
+  HETZNER_CCM_VERSION: "1.30.1"
+  HETZNER_CSI_VERSION: "2.20.0"
 
 tasks:
-  help:
-    desc: "Show available tasks"
+  # ==========================================================================
+  # PACKER — golden image builds
+  # ==========================================================================
+
+  _packer_build:
+    internal: true
     silent: true
+    dir: infra/packer
+    preconditions:
+      - sh: test -n "{{.HCLOUD_TOKEN}}"
+        msg: "HCLOUD_TOKEN is not set in .env"
+    env:
+      PKR_VAR_hcloud_token: "{{.HCLOUD_TOKEN}}"
+    cmds:
+      - packer init .
+      - >-
+        packer build {{.BUILD_ARGS}}
+        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
+        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
+        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
+        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
+        .
+
+  packer:
+    desc: "Build Hetzner Cloud images (NAT + K8s node)"
+    cmds:
+      - task: _packer_build
+        vars: { BUILD_ARGS: "-only=*.hcloud.* -parallel-builds=2" }
+
+  # ==========================================================================
+  # TERRAFORM
+  # ==========================================================================
+
+  _tf:
+    internal: true
+    dir: infra/terraform/hetzner
+    preconditions:
+      - sh: test -f "keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
+        msg: "GCP SA key not found at keys/gcp-tfstate-{{.CLOUD_ENV}}.json — download from GCP console"
+      - sh: test -n "{{.HCLOUD_TOKEN}}"
+        msg: "HCLOUD_TOKEN is not set in .env"
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
+      TF_VAR_token: "{{.HCLOUD_TOKEN}}"
+      TF_VAR_token_readonly: "{{.HCLOUD_TOKEN_READONLY}}"
+      TF_VAR_env: "{{.CLOUD_ENV}}"
+      TF_VAR_location: "{{.LOCATION}}"
+      TF_VAR_network_zone: "{{.NETWORK_ZONE}}"
+      TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
+      TF_VAR_ssh_key_name: "{{.HETZNER_SSH_KEY_NAME}}"
+      TF_VAR_cp_server_type: "{{.HCLOUD_CP_SERVER_TYPE}}"
+      TF_VAR_worker_server_type: "{{.HCLOUD_WORKER_SERVER_TYPE}}"
+      TF_VAR_nat_gateway_type: "{{.HCLOUD_NAT_TYPE}}"
+      TF_VAR_load_balancer_type: "{{.HCLOUD_LB_TYPE}}"
+      TF_VAR_tailscale_api_key: "{{.TAILSCALE_API_KEY}}"
+      TF_VAR_tailscale_tailnet: "{{.TAILSCALE_TAILNET}}"
+      TF_VAR_kubernetes_version: "{{.KUBERNETES_VERSION}}"
+      TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
+      TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
+      TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
+      TF_VAR_ccm_version: "{{.HETZNER_CCM_VERSION}}"
+      TF_VAR_csi_version: "{{.HETZNER_CSI_VERSION}}"
+    cmds:
+      - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.CLOUD_ENV}}"
+      - terraform {{.CMD}} {{.ARGS}}
+
+  plan:
+    desc: "Plan Hetzner infrastructure (Dev)"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "plan", ARGS: "-out=tfplan" }
+
+  apply:
+    desc: "Apply Hetzner infrastructure (Dev)"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+
+  destroy:
+    desc: "Destroy Hetzner infrastructure (Dev)"
+    prompt: "This will destroy all dev-ash Hetzner infrastructure. Are you sure?"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "destroy", ARGS: "-auto-approve" }
+
+  plan:prod:
+    desc: "Plan Hetzner infrastructure (Prod)"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "plan", ARGS: "-out=tfplan" }
+
+  apply:prod:
+    desc: "Apply Hetzner infrastructure (Prod)"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+
+  destroy:prod:
+    desc: "Destroy Hetzner infrastructure (Prod)"
+    prompt: "PRODUCTION — This will destroy prod-ash Hetzner infrastructure including all nodes and data. Are you sure?"
+    cmds:
+      - task: _tf
+        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "destroy", ARGS: "-auto-approve" }
+
+  # ==========================================================================
+  # CLUSTER ACCESS + OPERATIONS
+  # ==========================================================================
+
+  kubeconfig:
+    desc: "Fetch kubeconfig from CP node (Dev)"
+    dir: infra/terraform/hetzner
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/gcp-tfstate-dev.json"
     cmds:
       - |
-        echo ""
-        echo "K8s Platform — Hetzner"
-        echo "Usage: task <namespace>:<operation>"
-        echo ""
-        echo "Infrastructure (task hetzner:<op>):"
-        echo "  packer              Build golden images (NAT + K8s node)"
-        echo "  packer:nat          Build NAT gateway image only"
-        echo "  packer:k8s          Build K8s node image only"
-        echo "  plan                Plan infrastructure (dev)"
-        echo "  plan:prod           Plan infrastructure (prod)"
-        echo "  apply               Apply infrastructure (dev)"
-        echo "  apply:prod          Apply infrastructure (prod)"
-        echo "  destroy             Destroy infrastructure — prompts for confirmation (dev)"
-        echo "  destroy:prod        Destroy infrastructure — prompts for confirmation (prod)"
-        echo "  output              Show Terraform outputs (dev)"
-        echo "  output:prod         Show Terraform outputs (prod)"
-        echo "  kubeconfig          Fetch kubeconfig from CP node (dev)"
-        echo "  kubeconfig:prod     Fetch kubeconfig from CP node (prod)"
-        echo "  bootstrap           kubeconfig + post-bootstrap steps (dev)"
-        echo "  bootstrap:prod      kubeconfig + post-bootstrap steps (prod)"
-        echo ""
-        echo "Cluster ops (task cluster:<op>):"
-        echo "  set-email           Set Let's Encrypt email in ClusterIssuers"
-        echo "  set-repo            Set Git repo URL in ArgoCD app manifests"
-        echo "  fetch-cert          Fetch Sealed Secrets cert from CP node"
-        echo "  seal                Seal a single secret"
-        echo "  seal-all            Seal all platform bootstrap secrets"
-        echo "  post-bootstrap      Full post-bootstrap: fetch-cert + seal-all"
-        echo ""
-        echo "Validation (task validate:<op>):"
-        echo "  env                 Check .env vars, required files, installed tools"
-        echo "  terraform           fmt + validate Terraform"
-        echo "  packer              Validate Packer templates"
-        echo "  kustomize           Render ArgoCD overlays"
-        echo "  manifests           kubeconform on ArgoCD app manifests"
-        echo ""
-        echo "Run 'task validate:env' before first use to check your setup."
-        echo ""
+        CP=$(terraform output -raw control_plane_init_hostname)
+        echo "[Kubeconfig] Connecting to $CP..."
+        TS_IP=$(ssh root@$CP "tailscale ip -4 2>/dev/null")
+        if [ -z "$TS_IP" ]; then
+          echo "[ERROR] Could not get Tailscale IP from $CP — is Tailscale running on the node?"
+          exit 1
+        fi
+        ssh root@$CP "cat /etc/kubernetes/admin.conf" \
+          | sed "s/127.0.0.1/$TS_IP/g" \
+          > {{.ROOT_DIR}}/keys/kubeconfig-hetzner-dev
+        echo "[Kubeconfig] Saved to keys/kubeconfig-hetzner-dev"
+        echo "[Kubeconfig] Use: export KUBECONFIG={{.ROOT_DIR}}/keys/kubeconfig-hetzner-dev"
+
+  kubeconfig:prod:
+    desc: "Fetch kubeconfig from CP node (Prod)"
+    dir: infra/terraform/hetzner
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/gcp-tfstate-prod.json"
+    cmds:
+      - |
+        CP=$(terraform output -raw control_plane_init_hostname)
+        echo "[Kubeconfig] Connecting to $CP..."
+        TS_IP=$(ssh root@$CP "tailscale ip -4 2>/dev/null")
+        if [ -z "$TS_IP" ]; then
+          echo "[ERROR] Could not get Tailscale IP from $CP — is Tailscale running on the node?"
+          exit 1
+        fi
+        ssh root@$CP "cat /etc/kubernetes/admin.conf" \
+          | sed "s/127.0.0.1/$TS_IP/g" \
+          > {{.ROOT_DIR}}/keys/kubeconfig-hetzner-prod
+        echo "[Kubeconfig] Saved to keys/kubeconfig-hetzner-prod"
+        echo "[Kubeconfig] Use: export KUBECONFIG={{.ROOT_DIR}}/keys/kubeconfig-hetzner-prod"
+
+  fetch-cert:
+    desc: "Fetch Sealed Secrets public cert from cluster (run once after bootstrap)"
+    vars:
+      CP_HOSTNAME:
+        sh: cd infra/terraform/hetzner && terraform output -raw control_plane_init_hostname
+    cmds:
+      - >-
+        ssh root@{{.CP_HOSTNAME}}
+        "export KUBECONFIG=/etc/kubernetes/admin.conf;
+        kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system"
+        > keys/sealed-secrets-cert.pem
+      - echo "Public cert saved to keys/sealed-secrets-cert.pem"
+
+  seal:
+    desc: "Seal a secret locally using the cluster's public cert"
+    requires:
+      vars: [TENANT, NAME, KEY, VAL]
+    vars:
+      DEST: ""
+      OUTPUT_PATH: "{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}"
+    preconditions:
+      - sh: test -f keys/sealed-secrets-cert.pem
+        msg: "No public cert found. Run 'task fetch-cert' first."
+    cmds:
+      - "{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}"
+      - >-
+        kubectl create secret generic {{.NAME}} -n {{.TENANT}}
+        --from-literal={{.KEY}}='{{.VAL}}'
+        --dry-run=client -o yaml |
+        kubeseal --cert keys/sealed-secrets-cert.pem
+        --controller-name=sealed-secrets
+        --controller-namespace=kube-system
+        -o yaml > {{.OUTPUT_PATH}}
+      - echo "Sealed secret written to {{.OUTPUT_PATH}}"
+
+  seal-all:
+    desc: "Seal all bootstrap placeholder secrets"
+    preconditions:
+      - sh: test -f keys/sealed-secrets-cert.pem
+        msg: "No public cert found. Run 'task fetch-cert' first."
+    requires:
+      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+    cmds:
+      - |
+        echo "[SEAL] Sealing grafana-admin-secret..."
+        kubectl create secret generic grafana-admin-secret -n observability \
+          --from-literal=GF_SECURITY_ADMIN_PASSWORD='{{.GRAFANA_PASSWORD}}' \
+          --dry-run=client -o yaml | \
+        kubeseal --cert keys/sealed-secrets-cert.pem \
+          --controller-name=sealed-secrets \
+          --controller-namespace=kube-system \
+          -o yaml > infra/manifests/secrets/grafana-admin-secret.yaml
+        echo "[SEAL] Written to infra/manifests/secrets/grafana-admin-secret.yaml"
+      - |
+        echo "[SEAL] Sealing rustfs-credentials..."
+        kubectl create secret generic rustfs-credentials -n platform-system \
+          --from-literal=rootUser='{{.RUSTFS_USER}}' \
+          --from-literal=rootPassword='{{.RUSTFS_PASSWORD}}' \
+          --dry-run=client -o yaml | \
+        kubeseal --cert keys/sealed-secrets-cert.pem \
+          --controller-name=sealed-secrets \
+          --controller-namespace=kube-system \
+          -o yaml > infra/manifests/secrets/rustfs-credentials.yaml
+        echo "[SEAL] Written to infra/manifests/secrets/rustfs-credentials.yaml"
+      - echo "[SEAL] All secrets sealed. Commit and push to deploy."
+
+  bootstrap:
+    desc: "Fetch kubeconfig + seal secrets (Dev)"
+    requires:
+      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+    cmds:
+      - task: kubeconfig
+      - task: fetch-cert
+      - task: seal-all
+        vars:
+          GRAFANA_PASSWORD: "{{.GRAFANA_PASSWORD}}"
+          RUSTFS_USER: "{{.RUSTFS_USER}}"
+          RUSTFS_PASSWORD: "{{.RUSTFS_PASSWORD}}"
+      - echo ""
+      - echo "[BOOTSTRAP] Done. Commit and push:"
+      - echo "  git add infra/manifests/secrets/"
+      - echo "  git commit -m 'seal bootstrap secrets'"
+      - echo "  git push"
+
+  bootstrap:prod:
+    desc: "Fetch kubeconfig + seal secrets (Prod)"
+    requires:
+      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+    cmds:
+      - task: kubeconfig:prod
+      - task: fetch-cert
+      - task: seal-all
+        vars:
+          GRAFANA_PASSWORD: "{{.GRAFANA_PASSWORD}}"
+          RUSTFS_USER: "{{.RUSTFS_USER}}"
+          RUSTFS_PASSWORD: "{{.RUSTFS_PASSWORD}}"
+      - echo ""
+      - echo "[BOOTSTRAP] Done. Commit and push:"
+      - echo "  git add infra/manifests/secrets/"
+      - echo "  git commit -m 'seal bootstrap secrets'"
+      - echo "  git push"
+
+  set-email:
+    desc: "Set Let's Encrypt email in ClusterIssuer manifests"
+    preconditions:
+      - sh: test -n "{{.LETS_ENCRYPT_EMAIL}}"
+        msg: "LETS_ENCRYPT_EMAIL is not set in .env"
+    cmds:
+      - >-
+        sed -i 's|email: .*|email: {{.LETS_ENCRYPT_EMAIL}}|g'
+        infra/manifests/cert-manager/cluster-issuers.yaml
+      - echo "[CLUSTER] ClusterIssuer email set to {{.LETS_ENCRYPT_EMAIL}}"
+
+  set-repo:
+    desc: "Set Git repo URL in ArgoCD app manifests"
+    preconditions:
+      - sh: test -n "{{.GIT_REPO_URL}}"
+        msg: "GIT_REPO_URL is not set in .env"
+    cmds:
+      - |
+        find infra/argocd/apps -name "*.yaml" -exec \
+          sed -i "s|repoURL: https://github.com/YOUR_ORG/k8s-platform.git.*|repoURL: {{.GIT_REPO_URL}}|g" {} \;
+        echo "[CLUSTER] Repo URL set to {{.GIT_REPO_URL}} in all ArgoCD app manifests"
+
+  # ==========================================================================
+  # VALIDATION
+  # ==========================================================================
 
   validate:
     desc: "Run all static validation checks"
     cmds:
       - task: validate:env
-      - task: validate:terraform
+      - task: validate:tf
       - task: validate:packer
       - task: validate:kustomize
       - task: validate:manifests
+
+  validate:env:
+    desc: "Check .env vars, required files, and installed tools"
+    cmds:
+      - |
+        errors=0
+
+        check_var() {
+          val=$(grep -m1 "^$1=" .env 2>/dev/null | cut -d= -f2-)
+          if [ -z "$val" ]; then
+            echo "[MISSING VAR]  $1"
+            errors=$((errors + 1))
+          fi
+        }
+
+        check_file() {
+          if [ ! -f "$1" ]; then
+            echo "[MISSING FILE] $1"
+            errors=$((errors + 1))
+          fi
+        }
+
+        check_tool() {
+          if ! command -v "$1" >/dev/null 2>&1; then
+            echo "[MISSING TOOL] $1 — $2"
+            errors=$((errors + 1))
+          fi
+        }
+
+        echo "--- Tools ---"
+        check_tool terraform  "https://developer.hashicorp.com/terraform/install"
+        check_tool packer     "https://developer.hashicorp.com/packer/install"
+        check_tool kubectl    "https://kubernetes.io/docs/tasks/tools/"
+        check_tool helm       "https://helm.sh/docs/intro/install/"
+        check_tool kubeseal   "https://github.com/bitnami-labs/sealed-secrets#kubeseal"
+        check_tool task       "https://taskfile.dev/installation/"
+        check_tool gcloud     "https://cloud.google.com/sdk/docs/install (for GCS state backend)"
+
+        echo "--- Hetzner ---"
+        check_var HCLOUD_TOKEN
+        check_var HCLOUD_TOKEN_READONLY
+        check_var HETZNER_SSH_KEY_NAME
+        check_var TAILSCALE_API_KEY
+        check_var TAILSCALE_TAILNET
+        check_var HETZNER_TFSTATE_BUCKET_DEV
+        check_var HETZNER_TFSTATE_BUCKET_PROD
+        check_var HETZNER_BACKUP_BUCKET_DEV
+        check_var HETZNER_BACKUP_BUCKET_PROD
+
+        echo "--- GCS (state + backups) ---"
+        check_file keys/gcp-tfstate-dev.json
+        check_file keys/gcp-tfstate-prod.json
+
+        echo "--- Platform ---"
+        check_var GIT_REPO_URL
+        check_var LETS_ENCRYPT_EMAIL
+        check_var DOMAIN
+
+        echo "--- Warnings ---"
+        for f in infra/argocd/apps/*.yaml; do
+          name=$(basename "$f")
+          grep -q "placeholder" "$f" 2>/dev/null && echo "[WARN] $name has placeholder values"
+          grep -q "YOUR_ORG" "$f" 2>/dev/null && echo "[WARN] $name has placeholder repo URL — run: task set-repo"
+          grep -q "example.com" "$f" 2>/dev/null && echo "[WARN] $name has example.com — update before production"
+        done
+
+        echo ""
+        if [ $errors -gt 0 ]; then
+          echo "[VALIDATE] $errors issue(s) found — fix before running tasks"
+          exit 1
+        else
+          echo "[VALIDATE] Environment OK"
+        fi
+
+  validate:tf:
+    desc: "Validate Terraform configuration"
+    dir: infra/terraform/hetzner
+    cmds:
+      - terraform fmt -check -recursive -diff
+      - terraform init -backend=false -input=false >/dev/null 2>&1
+      - terraform validate
+      - echo "[VALIDATE] Terraform OK"
+
+  validate:packer:
+    desc: "Validate Packer templates"
+    dir: infra/packer
+    env:
+      PKR_VAR_hcloud_token: "placeholder"
+    cmds:
+      - packer init .
+      - >-
+        packer validate
+        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
+        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
+        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
+        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
+        .
+      - echo "[VALIDATE] Packer OK"
+
+  validate:kustomize:
+    desc: "Validate Kustomize overlays render without errors"
+    cmds:
+      - |
+        for env in hetzner-dev hetzner-prod; do
+          echo "[VALIDATE] Kustomize $env..."
+          kubectl kustomize infra/argocd/envs/$env --load-restrictor=LoadRestrictionsNone >/dev/null
+        done
+        echo "[VALIDATE] Kustomize OK"
+
+  validate:manifests:
+    desc: "Validate Kubernetes manifests against API schemas"
+    cmds:
+      - |
+        if command -v kubeconform >/dev/null 2>&1; then
+          for f in infra/argocd/apps/*.yaml; do
+            kubeconform -strict -ignore-missing-schemas "$f"
+          done
+          echo "[VALIDATE] Kubernetes manifests OK"
+        else
+          echo "[VALIDATE] kubeconform not installed — skipping manifest validation"
+        fi

@@ -1,0 +1,16 @@
+network:
+  version: 2
+  ethernets:
+    enp7s0:
+      dhcp4: true
+      dhcp4-overrides:
+        use-routes: false
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+      routes:
+        - to: 0.0.0.0/0
+          via: 10.0.0.1
+          on-link: true
+        - to: 169.254.169.254/32
+          via: 10.0.0.1
+          on-link: true

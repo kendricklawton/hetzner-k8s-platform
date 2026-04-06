@@ -26,19 +26,14 @@ Self-managed Kubernetes on Hetzner Cloud using kubeadm. GitOps-driven via ArgoCD
 ## Repository Structure
 
 ```
-Taskfile.yml
+Taskfile.yml                 # All tasks: packer, terraform, cluster ops, validation
 infra/
-├── taskfiles/
-│   ├── hetzner.yml      # Packer + Terraform + kubeconfig + bootstrap
-│   ├── cluster.yml      # Sealed Secrets, cert, post-bootstrap
-│   └── validate.yml     # Static validation
 ├── terraform/
 │   └── hetzner/         # VPC, NAT VM, servers, LBs, firewall, cloud-init
-├── packer/
-│   └── hetzner/         # Golden images: NAT gateway + K8s node
-│       ├── ubuntu.pkr.hcl
-│       ├── files/        # Baked bootstrap scripts (kubeadm, NAT, failover)
-│       └── scripts/      # Shared provisioners (base, tailscale, cleanup)
+├── packer/              # Golden images: NAT gateway + K8s node
+│   ├── ubuntu.pkr.hcl
+│   ├── files/            # Baked bootstrap scripts (kubeadm, NAT, failover)
+│   └── scripts/          # Shared provisioners (base, tailscale, cleanup)
 ├── argocd/
 │   ├── apps/             # ArgoCD Application manifests
 │   └── envs/
@@ -88,16 +83,16 @@ Run `task validate:env` to check everything before starting.
 
 ```sh
 # Set Let's Encrypt email in ClusterIssuers and commit
-task cluster:set-email
+task set-email
 
 # Set your Git repo URL in ArgoCD app manifests and commit
-task cluster:set-repo
+task set-repo
 ```
 
 ### 2. Build golden images
 
 ```sh
-task hetzner:packer
+task packer
 ```
 
 Produces two Hetzner snapshots in Ashburn: `role=k8s-node` and `role=nat-gateway`.
@@ -107,8 +102,8 @@ Produces two Hetzner snapshots in Ashburn: `role=k8s-node` and `role=nat-gateway
 ### 3. Provision infrastructure
 
 ```sh
-task hetzner:plan
-task hetzner:apply
+task plan
+task apply
 ```
 
 Dev: 1 CP, 1 worker, 1 NAT, 2 LBs (~10 min bootstrap via cloud-init).
@@ -123,7 +118,7 @@ tail -f /var/log/k8s-bootstrap.log
 ### 4. Fetch kubeconfig
 
 ```sh
-task hetzner:kubeconfig        # saves to keys/kubeconfig-hetzner-dev
+task kubeconfig        # saves to keys/kubeconfig-hetzner-dev
 export KUBECONFIG=$PWD/keys/kubeconfig-hetzner-dev
 ```
 
@@ -146,7 +141,7 @@ ArgoCD then syncs all platform apps automatically (~5 min).
 ### 6. Post-bootstrap
 
 ```sh
-task hetzner:bootstrap \
+task bootstrap \
   GRAFANA_PASSWORD='...' \
   RUSTFS_USER='admin' \
   RUSTFS_PASSWORD='...'
@@ -168,12 +163,12 @@ ArgoCD picks up the sealed secrets and deploys them.
 
 ### Infrastructure changes
 ```sh
-task hetzner:plan         # dev
-task hetzner:apply
-task hetzner:plan:prod    # prod
-task hetzner:apply:prod
-task hetzner:destroy      # prompts for confirmation
-task hetzner:destroy:prod # prompts for confirmation
+task plan         # dev
+task apply
+task plan:prod    # prod
+task apply:prod
+task destroy      # prompts for confirmation
+task destroy:prod # prompts for confirmation
 ```
 
 ### App and config changes
@@ -188,17 +183,17 @@ For TLS: add `cert-manager.io/cluster-issuer: letsencrypt-prod` to your Ingress.
 
 ### Seal a secret
 ```sh
-task cluster:seal TENANT=<ns> NAME=<name> KEY=<key> VAL='<value>'
+task seal TENANT=<ns> NAME=<name> KEY=<key> VAL='<value>'
 
 # Write directly to a specific path:
-task cluster:seal TENANT=observability NAME=grafana-admin-secret \
+task seal TENANT=observability NAME=grafana-admin-secret \
   KEY=GF_SECURITY_ADMIN_PASSWORD VAL='...' \
   DEST=infra/manifests/secrets/grafana-admin-secret.yaml
 ```
 
 ### Re-fetch Sealed Secrets cert (after cluster rebuild)
 ```sh
-task cluster:fetch-cert
+task fetch-cert
 ```
 The key pair regenerates on every rebuild — re-seal all secrets after.
 
@@ -253,11 +248,11 @@ ETCDCTL_API=3 etcdctl \
 ## Teardown
 
 ```sh
-task hetzner:destroy        # dev — prompts for confirmation
-task hetzner:destroy:prod   # prod — prompts for confirmation
+task destroy        # dev — prompts for confirmation
+task destroy:prod   # prod — prompts for confirmation
 ```
 
-Teardown loses the Sealed Secrets key pair. Run `task cluster:fetch-cert` and re-seal all secrets after the next bootstrap.
+Teardown loses the Sealed Secrets key pair. Run `task fetch-cert` and re-seal all secrets after the next bootstrap.
 
 ## Resource Naming
 

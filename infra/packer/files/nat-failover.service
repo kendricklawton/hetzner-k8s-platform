@@ -1,0 +1,13 @@
+[Unit]
+Description=NAT Gateway Failover Watchdog
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nat-failover.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
