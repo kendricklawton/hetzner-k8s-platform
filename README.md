@@ -1,6 +1,6 @@
 # Hetzner K8s Platform
 
-Self-hosted Kubernetes on Hetzner Cloud using kubeadm. Two environments (dev/prod), GitOps-managed with ArgoCD, built for CKA exam practice.
+Self-hosted Kubernetes on Hetzner Cloud using kubeadm. Two environments (dev/prod), GitOps-managed with ArgoCD.
 
 ## Stack
 
@@ -11,7 +11,7 @@ Self-hosted Kubernetes on Hetzner Cloud using kubeadm. Two environments (dev/pro
 | Provisioning | Terraform + Packer (hardened Ubuntu 24.04 images) |
 | State backend | GCS (per-env buckets) |
 | GitOps | ArgoCD (sync-wave ordered) |
-| Network | Cilium (eBPF, replaces kube-proxy) |
+| Network | Cilium (eBPF, native routing, WireGuard encryption, replaces kube-proxy) |
 | Operator access | Tailscale SSH overlay (no public IPs on nodes) |
 | Secrets | Sealed Secrets (encrypted at rest, committed to Git) |
 | Database | CloudNativePG (PostgreSQL operator) |
@@ -19,6 +19,19 @@ Self-hosted Kubernetes on Hetzner Cloud using kubeadm. Two environments (dev/pro
 | Observability | VictoriaMetrics + Grafana + Loki + Fluent Bit |
 | Ingress | ingress-nginx + cert-manager (Let's Encrypt TLS) |
 | Backups | GCS buckets (per-env) via RustFS + etcd snapshots (local) |
+
+## Network Architecture
+
+All nodes are on a private subnet with no public IPs. Outbound traffic routes through a NAT gateway. Operator access is via Tailscale.
+
+| Range | Purpose |
+|---|---|
+| `10.0.0.0/8` | Hetzner VPC (must be `/8` to encompass pod + service CIDRs) |
+| `10.0.1.0/24` | Node subnet (CP, workers, LBs, NAT) |
+| `10.244.0.0/16` | Pod CIDR |
+| `10.96.0.0/12` | Service CIDR |
+
+Cilium runs in native routing mode. The Hetzner CCM registers per-node pod CIDR routes into the VPC so cross-node pod traffic is routed at the Hetzner network layer. WireGuard encrypts all pod-to-pod traffic between nodes.
 
 ## Project Structure
 
@@ -49,15 +62,15 @@ Taskfile.yml                       # All infra tasks
 
 | | Dev | Prod |
 |---|---|---|
-| Control planes | 1 | 3 (HA) |
+| Control planes | 1 | 3 (HA etcd) |
 | Workers | 1 | 3 |
-| NAT gateways | 1 | 2 (failover) |
+| NAT gateways | 1 | 2 (failover watchdog) |
 | Naming | `dev-ash-*` | `prod-ash-*` |
 
 ## Workflow
 
 ```sh
-# Build golden images
+# Build golden images (required when bootstrap scripts change)
 task packer
 
 # Dev
@@ -70,11 +83,26 @@ task plan:prod
 task apply:prod
 task destroy:prod
 
-# Post-bootstrap
-task cluster:fetch-cert
-task cluster:seal TENANT=platform-system NAME=rustfs-credentials KEY=rootUser VAL='admin'
-task cluster:set-email
+# Post-bootstrap (run after cluster is healthy)
+task cluster:post-bootstrap \
+  GRAFANA_PASSWORD='...' \
+  RUSTFS_USER='admin' \
+  RUSTFS_PASSWORD='...'
 ```
+
+## Bootstrap vs ArgoCD-managed Components
+
+Components installed during cloud-init (not managed by ArgoCD):
+
+| Component | Reason |
+|---|---|
+| Cilium | ArgoCD needs networking to function |
+| Hetzner CCM | Required for VPC pod routes |
+| Hetzner CSI | Required for storage |
+| Sealed Secrets | Required to decrypt secrets on first sync |
+| ArgoCD | Manages everything else |
+
+All other components are deployed and managed by ArgoCD via sync-waves.
 
 ## GCP Resources
 

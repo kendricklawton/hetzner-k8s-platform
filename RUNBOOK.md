@@ -6,7 +6,7 @@ Operational procedures for the platform. Single-operator context.
 
 ## Prerequisites
 
-- `terraform`, `packer`, `helm`, `kubectl` installed
+- `terraform`, `packer`, `helm`, `kubectl`, `kubeseal` installed
 - `.env` populated (copy from `.env.example`)
 - GCP SA keys downloaded to `keys/`
 - SSH key uploaded to Hetzner Cloud
@@ -28,6 +28,8 @@ task packer
 ```
 Produces two Hetzner snapshots in Ashburn: `role=k8s-node` and `role=nat-gateway`.
 
+> Rebuild required any time `infra/packer/files/` changes. Terraform-only changes (versions, firewall rules, network config) do not require a Packer rebuild.
+
 ### 3. Deploy infrastructure
 ```sh
 # Dev
@@ -39,37 +41,57 @@ task plan:prod
 task apply:prod
 ```
 
-Dev creates: 1 NAT, 1 CP, 1 worker, 2 LBs, VPC.
+Dev creates: 1 NAT, 1 CP, 1 worker, 2 LBs, VPC (`10.0.0.0/8`).
 Prod creates: 2 NAT (failover), 3 CP (HA), 3 workers, 2 LBs, VPC.
+
+Bootstrap takes ~10 minutes. Monitor progress on the CP node:
+```sh
+ssh root@<cp-init-tailscale-hostname>
+tail -f /var/log/k8s-bootstrap.log
+```
 
 ### 4. Connect to cluster
 ```sh
 ssh root@<cp-init-tailscale-hostname>
 cat /etc/kubernetes/admin.conf
 ```
-Copy kubeconfig locally. Replace `127.0.0.1` with the Tailscale IP.
+Copy kubeconfig locally. Replace `127.0.0.1` with the node's Tailscale IP.
 
 ### 5. Verify bootstrap
 ```sh
 kubectl get nodes
 kubectl get pods -A
 ```
-ArgoCD, Cilium, ingress-nginx, cert-manager, Sealed Secrets should all be running.
 
-### 6. Seal secrets (post-bootstrap)
+Expected healthy bootstrap state:
+- All nodes `Ready`
+- Cilium, CoreDNS, Hubble running in `kube-system`
+- Hetzner CCM and CSI running in `kube-system`
+- Sealed Secrets running in `kube-system`
+- ArgoCD pods running in `argocd`
+
+ArgoCD will then begin syncing all other applications (cert-manager, ingress-nginx, observability stack, etc.). Full sync takes ~5 minutes.
+
+### 6. Post-bootstrap
 ```sh
-# Fetch the sealing cert
-task cluster:fetch-cert
-
-# Seal RustFS credentials
-task cluster:seal TENANT=platform-system NAME=rustfs-credentials KEY=rootUser VAL='admin'
-# Seal rootPassword separately
-
-# Seal Grafana admin password
-task cluster:seal TENANT=observability NAME=grafana-admin-secret KEY=GF_SECURITY_ADMIN_PASSWORD VAL='your-password' \
-  DEST=infra/manifests/secrets/grafana-admin-secret.yaml
+task cluster:post-bootstrap \
+  GRAFANA_PASSWORD='your-password' \
+  RUSTFS_USER='admin' \
+  RUSTFS_PASSWORD='your-password'
 ```
-Commit and push the sealed secrets. ArgoCD syncs them automatically.
+
+This runs in sequence:
+1. `cluster:fetch-cert` — fetches the Sealed Secrets public cert from the cluster
+2. `cluster:seal-all` — seals all bootstrap secrets (Grafana, RustFS)
+3. Prints next steps to commit and push
+
+```sh
+git add infra/manifests/secrets/
+git commit -m 'seal bootstrap secrets'
+git push
+```
+
+ArgoCD picks up the sealed secrets and deploys them automatically.
 
 ---
 
@@ -102,8 +124,21 @@ task cluster:seal TENANT=<namespace> NAME=<secret-name> KEY=<key> VAL='<value>'
 ```
 Output: `tenants/<TENANT>/<NAME>-sealed.yaml`. Move to the target path and commit.
 
+To write directly to a specific path:
+```sh
+task cluster:seal TENANT=observability NAME=grafana-admin-secret \
+  KEY=GF_SECURITY_ADMIN_PASSWORD VAL='password' \
+  DEST=infra/manifests/secrets/grafana-admin-secret.yaml
+```
+
 ### Rotate
 Re-seal with the current cert and push. ArgoCD syncs it.
+
+### Re-fetch cert (new cluster)
+```sh
+task cluster:fetch-cert
+```
+Saves to `keys/sealed-secrets-cert.pem`. Required after every cluster rebuild since the key pair is regenerated.
 
 ---
 
@@ -158,6 +193,16 @@ For TLS: add `cert-manager.io/cluster-issuer: letsencrypt` annotation to your In
 
 ---
 
+## Networking Notes
+
+**Native routing with Hetzner CCM:** Cilium uses native routing mode. The CCM registers per-node pod CIDR routes into the Hetzner VPC. The VPC must be `10.0.0.0/8` (not `/16`) to accept routes for `10.244.x.x` pod IPs. Without this, return traffic from the API server to pods is silently dropped.
+
+**WireGuard encryption:** All pod-to-pod traffic between nodes is encrypted. The Cilium MTU is set via `$HCLOUD_MTU` (from cloud-init). Hetzner private network MTU is 1450.
+
+**Firewall rules:** All internal rules use `10.0.0.0/8` to allow traffic from pod IPs in addition to node IPs.
+
+---
+
 ## Teardown
 
 ```sh
@@ -167,7 +212,7 @@ task destroy
 # Prod
 task destroy:prod
 ```
-Destroys all Hetzner resources. Sealed Secrets keys are lost — re-sealing required on next bootstrap.
+Destroys all Hetzner resources. Sealed Secrets keys are lost — `task cluster:fetch-cert` and re-sealing required on next bootstrap.
 
 ---
 
