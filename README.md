@@ -177,7 +177,7 @@ Edit files under `infra/argocd/` or `infra/manifests/` → push. ArgoCD auto-syn
 
 **Add a new app:**
 1. Create `infra/argocd/apps/<name>.yaml`
-2. Add to `infra/argocd/envs/hetzner-dev/kustomization.yaml` (and prod)
+2. Add to `infra/argocd/envs/base/kustomization.yaml`
 3. Push
 
 For TLS: add `cert-manager.io/cluster-issuer: letsencrypt-prod` to your Ingress.
