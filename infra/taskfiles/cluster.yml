@@ -1,0 +1,110 @@
+version: "3"
+
+# Cluster operations: Sealed Secrets, post-bootstrap, and config templating.
+
+tasks:
+  fetch-cert:
+    desc: "Fetch Sealed Secrets public cert from Hetzner cluster (run once after bootstrap)"
+    vars:
+      CP_HOSTNAME:
+        sh: cd {{.ROOT_DIR}}/infra/terraform/hetzner && terraform output -raw control_plane_init_hostname
+    cmds:
+      - >-
+        ssh root@{{.CP_HOSTNAME}}
+        "export KUBECONFIG=/etc/kubernetes/admin.conf;
+        kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system"
+        > keys/sealed-secrets-cert.pem
+      - echo "Public cert saved to keys/sealed-secrets-cert.pem"
+
+  seal:
+    desc: "Seal a secret locally using the cluster's public cert"
+    requires:
+      vars: [TENANT, NAME, KEY, VAL]
+    vars:
+      DEST: ""
+      OUTPUT_PATH: "{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}"
+    preconditions:
+      - sh: test -f keys/sealed-secrets-cert.pem
+        msg: "No public cert found. Run 'task cluster:fetch-cert' first."
+    cmds:
+      - "{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}"
+      - >-
+        kubectl create secret generic {{.NAME}} -n {{.TENANT}}
+        --from-literal={{.KEY}}='{{.VAL}}'
+        --dry-run=client -o yaml |
+        kubeseal --cert keys/sealed-secrets-cert.pem
+        --controller-name=sealed-secrets
+        --controller-namespace=kube-system
+        -o yaml > {{.OUTPUT_PATH}}
+      - echo "Sealed secret written to {{.OUTPUT_PATH}}"
+
+  seal-all:
+    desc: "Seal all bootstrap placeholder secrets"
+    preconditions:
+      - sh: test -f keys/sealed-secrets-cert.pem
+        msg: "No public cert found. Run 'task cluster:fetch-cert' first."
+    requires:
+      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+    cmds:
+      - |
+        echo "[SEAL] Sealing grafana-admin-secret..."
+        kubectl create secret generic grafana-admin-secret -n observability \
+          --from-literal=GF_SECURITY_ADMIN_PASSWORD='{{.GRAFANA_PASSWORD}}' \
+          --dry-run=client -o yaml | \
+        kubeseal --cert keys/sealed-secrets-cert.pem \
+          --controller-name=sealed-secrets \
+          --controller-namespace=kube-system \
+          -o yaml > infra/manifests/secrets/grafana-admin-secret.yaml
+        echo "[SEAL] Written to infra/manifests/secrets/grafana-admin-secret.yaml"
+      - |
+        echo "[SEAL] Sealing rustfs-credentials..."
+        kubectl create secret generic rustfs-credentials -n platform-system \
+          --from-literal=rootUser='{{.RUSTFS_USER}}' \
+          --from-literal=rootPassword='{{.RUSTFS_PASSWORD}}' \
+          --dry-run=client -o yaml | \
+        kubeseal --cert keys/sealed-secrets-cert.pem \
+          --controller-name=sealed-secrets \
+          --controller-namespace=kube-system \
+          -o yaml > infra/manifests/secrets/rustfs-credentials.yaml
+        echo "[SEAL] Written to infra/manifests/secrets/rustfs-credentials.yaml"
+      - echo "[SEAL] All secrets sealed. Commit and push to deploy."
+
+  post-bootstrap:
+    desc: "Run all Hetzner post-bootstrap steps (fetch cert, seal secrets, commit)"
+    requires:
+      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+    cmds:
+      - task: fetch-cert
+      - task: seal-all
+        vars:
+          GRAFANA_PASSWORD: "{{.GRAFANA_PASSWORD}}"
+          RUSTFS_USER: "{{.RUSTFS_USER}}"
+          RUSTFS_PASSWORD: "{{.RUSTFS_PASSWORD}}"
+      - echo ""
+      - echo "[POST-BOOTSTRAP] Done. Review the sealed files, then commit and push:"
+      - echo "  git add infra/manifests/secrets/"
+      - echo "  git commit -m 'seal bootstrap secrets'"
+      - echo "  git push"
+
+  set-email:
+    desc: "Set Let's Encrypt email in ClusterIssuer manifests (reads LETS_ENCRYPT_EMAIL from .env)"
+    preconditions:
+      - sh: test -n "{{.LETS_ENCRYPT_EMAIL}}"
+        msg: "LETS_ENCRYPT_EMAIL is not set in .env"
+    cmds:
+      - >-
+        sed -i 's|email: .*|email: {{.LETS_ENCRYPT_EMAIL}}|g'
+        infra/manifests/cert-manager/cluster-issuers.yaml
+      - echo "[CLUSTER] ClusterIssuer email set to {{.LETS_ENCRYPT_EMAIL}}"
+
+  set-repo:
+    desc: "Set Git repo URL in ArgoCD app manifests (reads GIT_REPO_URL from .env)"
+    preconditions:
+      - sh: test -n "{{.GIT_REPO_URL}}"
+        msg: "GIT_REPO_URL is not set in .env"
+    cmds:
+      - |
+        find infra/argocd/apps -name "*.yaml" -exec \
+          sed -i "s|repoURL: https://github.com/YOUR_ORG/k8s-platform.git.*|repoURL: {{.GIT_REPO_URL}}|g" {} \;
+        echo "[CLUSTER] Repo URL set to {{.GIT_REPO_URL}} in all ArgoCD app manifests"
+      - echo "Commit and push to sync ArgoCD."

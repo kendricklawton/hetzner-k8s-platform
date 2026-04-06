@@ -274,7 +274,7 @@ resource "hcloud_server" "control_plane_init" {
       "__KUBEADM_CERT_KEY__", random_id.kubeadm_cert_key.hex),
       "__TAILSCALE_AUTH_KEY__", tailscale_tailnet_key.cp.key),
       "__GIT_REPO_URL__", var.git_repo_url),
-      "__ARGOCD_APPS_PATH__", "infra/argocd/envs/${var.env}"),
+      "__ARGOCD_APPS_PATH__", "infra/argocd/envs/hetzner-${var.env}"),
       "__CILIUM_VERSION__", var.cilium_version),
       "__HCLOUD_MTU__", tostring(var.hcloud_mtu)),
     "__ARGOCD_VERSION__", var.argocd_version),

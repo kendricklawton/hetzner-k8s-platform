@@ -3,346 +3,66 @@ version: "3"
 dotenv: [".env"]
 
 vars:
-  PACKER_DIR: "infra/packer"
-
-  # Hetzner Cloud — server types and versions
-  HCLOUD_UBUNTU_VERSION: "ubuntu-24.04"
-  HCLOUD_K8S_TYPE: "cpx21"
-  HCLOUD_LB_TYPE: "lb11"
-  HCLOUD_NAT_TYPE: "cpx11"
-  HCLOUD_CP_SERVER_TYPE: "cpx21"
-  HCLOUD_WORKER_SERVER_TYPE: "cpx21"
-  HETZNER_CCM_VERSION: "1.30.1"
-  HETZNER_CSI_VERSION: "2.20.0"
-
-  PROJECT_NAME: "hetzner-k8s-platform"
-
-  # BOOTSTRAP COMPONENT VERSIONS (installed via cloud-init, not ArgoCD)
-  # Cilium, CCM, CSI, Sealed Secrets, and ArgoCD are installed during
-  # cluster bootstrap because ArgoCD depends on them to function.
-  # They are intentionally NOT managed by ArgoCD to avoid circular
-  # dependencies (ArgoCD needs Cilium networking to operate).
-  # ArgoCD-managed component versions live in infra/argocd/apps/*.yaml.
   KUBERNETES_VERSION: "v1.32.13"
   CILIUM_VERSION: "1.19.2"
-  INGRESS_NGINX_VERSION: "4.15.1"
   SEALED_SECRETS_VERSION: "2.18.4"
   ARGOCD_VERSION: "7.8.23"
 
+includes:
+  hetzner: ./infra/taskfiles/hetzner.yml
+  cluster: ./infra/taskfiles/cluster.yml
+  validate: ./infra/taskfiles/validate.yml
+
 tasks:
-  _packer_build:
-    internal: true
+  help:
+    desc: "Show available tasks"
     silent: true
-    desc: "Generic Hetzner Packer Build Wrapper"
-    dir: "{{.ROOT_DIR}}/{{.PACKER_DIR}}"
-    env:
-      PKR_VAR_hcloud_token: "{{.HCLOUD_TOKEN}}"
     cmds:
-      - packer init .
-      - >-
-        packer build {{.BUILD_ARGS}}
-        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
-        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
-        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
-        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
-        .
+      - |
+        echo ""
+        echo "K8s Platform — Hetzner"
+        echo "Usage: task <namespace>:<operation>"
+        echo ""
+        echo "Infrastructure (task hetzner:<op>):"
+        echo "  packer              Build golden images (NAT + K8s node)"
+        echo "  packer:nat          Build NAT gateway image only"
+        echo "  packer:k8s          Build K8s node image only"
+        echo "  plan                Plan infrastructure (dev)"
+        echo "  plan:prod           Plan infrastructure (prod)"
+        echo "  apply               Apply infrastructure (dev)"
+        echo "  apply:prod          Apply infrastructure (prod)"
+        echo "  destroy             Destroy infrastructure — prompts for confirmation (dev)"
+        echo "  destroy:prod        Destroy infrastructure — prompts for confirmation (prod)"
+        echo "  output              Show Terraform outputs (dev)"
+        echo "  output:prod         Show Terraform outputs (prod)"
+        echo "  kubeconfig          Fetch kubeconfig from CP node (dev)"
+        echo "  kubeconfig:prod     Fetch kubeconfig from CP node (prod)"
+        echo "  bootstrap           kubeconfig + post-bootstrap steps (dev)"
+        echo "  bootstrap:prod      kubeconfig + post-bootstrap steps (prod)"
+        echo ""
+        echo "Cluster ops (task cluster:<op>):"
+        echo "  set-email           Set Let's Encrypt email in ClusterIssuers"
+        echo "  set-repo            Set Git repo URL in ArgoCD app manifests"
+        echo "  fetch-cert          Fetch Sealed Secrets cert from CP node"
+        echo "  seal                Seal a single secret"
+        echo "  seal-all            Seal all platform bootstrap secrets"
+        echo "  post-bootstrap      Full post-bootstrap: fetch-cert + seal-all"
+        echo ""
+        echo "Validation (task validate:<op>):"
+        echo "  env                 Check .env vars, required files, installed tools"
+        echo "  terraform           fmt + validate Terraform"
+        echo "  packer              Validate Packer templates"
+        echo "  kustomize           Render ArgoCD overlays"
+        echo "  manifests           kubeconform on ArgoCD app manifests"
+        echo ""
+        echo "Run 'task validate:env' before first use to check your setup."
+        echo ""
 
-  packer:
-    desc: "Build Hetzner Cloud images (NAT + K8s node)"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=*.hcloud.* -parallel-builds=2" }
-
-  packer:nat:
-    desc: "Build ONLY the Hetzner NAT Gateway image"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=nat.hcloud.* -parallel-builds=2" }
-
-  packer:k8s:
-    desc: "Build ONLY the Hetzner K8s node image (kubeadm)"
-    cmds:
-      - task: _packer_build
-        vars: { BUILD_ARGS: "-only=k8s.hcloud.* -parallel-builds=2" }
-
-  _tf:
-    internal: true
-    dir: "{{.ROOT_DIR}}/infra/terraform"
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
-      TF_VAR_token: "{{.HCLOUD_TOKEN}}"
-      TF_VAR_token_readonly: "{{.HCLOUD_TOKEN_READONLY}}"
-      TF_VAR_env: "{{.CLOUD_ENV}}"
-      TF_VAR_location: "{{.LOCATION}}"
-      TF_VAR_network_zone: "{{.NETWORK_ZONE}}"
-      TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
-      TF_VAR_ssh_key_name: "{{.HETZNER_SSH_KEY_NAME}}"
-      TF_VAR_cp_server_type: "{{.HCLOUD_CP_SERVER_TYPE}}"
-      TF_VAR_worker_server_type: "{{.HCLOUD_WORKER_SERVER_TYPE}}"
-      TF_VAR_nat_gateway_type: "{{.HCLOUD_NAT_TYPE}}"
-      TF_VAR_load_balancer_type: "{{.HCLOUD_LB_TYPE}}"
-      TF_VAR_tailscale_api_key: "{{.TAILSCALE_API_KEY}}"
-      TF_VAR_tailscale_tailnet: "{{.TAILSCALE_TAILNET}}"
-      TF_VAR_kubernetes_version: "{{.KUBERNETES_VERSION}}"
-      TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
-      TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
-      TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
-      TF_VAR_ccm_version: "{{.HETZNER_CCM_VERSION}}"
-      TF_VAR_csi_version: "{{.HETZNER_CSI_VERSION}}"
-    cmds:
-      - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.CLOUD_ENV}}"
-      - terraform {{.CMD}} {{.ARGS}}
-
-  plan:
-    desc: "Plan Hetzner infrastructure (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "dev",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
-            CMD: "plan",
-            ARGS: "-out=tfplan",
-          }
-
-  apply:
-    desc: "Apply Hetzner infrastructure (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "dev",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
-            CMD: "apply",
-            ARGS: "-auto-approve tfplan",
-          }
-
-  destroy:
-    desc: "Destroy Hetzner infrastructure (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "dev",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
-            CMD: "destroy",
-            ARGS: "-auto-approve",
-          }
-
-  output:
-    desc: "Show Hetzner Terraform outputs (Dev)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "dev",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_DEV}}",
-            CMD: "output",
-            ARGS: "",
-          }
-
-  plan:prod:
-    desc: "Plan Hetzner infrastructure (Prod)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "prod",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
-            CMD: "plan",
-            ARGS: "-out=tfplan",
-          }
-
-  apply:prod:
-    desc: "Apply Hetzner infrastructure (Prod)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "prod",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
-            CMD: "apply",
-            ARGS: "-auto-approve tfplan",
-          }
-
-  destroy:prod:
-    desc: "Destroy Hetzner infrastructure (Prod)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "prod",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
-            CMD: "destroy",
-            ARGS: "-auto-approve",
-          }
-
-  output:prod:
-    desc: "Show Hetzner Terraform outputs (Prod)"
-    cmds:
-      - task: _tf
-        vars:
-          {
-            LOCATION: "ash",
-            NETWORK_ZONE: "us-east",
-            CLOUD_ENV: "prod",
-            TFSTATE_BUCKET: "{{.GCS_TFSTATE_BUCKET_PROD}}",
-            CMD: "output",
-            ARGS: "",
-          }
-
-  # --- VALIDATION ---
   validate:
     desc: "Run all static validation checks"
     cmds:
+      - task: validate:env
       - task: validate:terraform
       - task: validate:packer
       - task: validate:kustomize
       - task: validate:manifests
-
-  validate:terraform:
-    desc: "Validate Terraform configuration"
-    dir: "{{.ROOT_DIR}}/infra/terraform"
-    cmds:
-      - terraform fmt -check -recursive -diff
-      - terraform init -backend=false -input=false >/dev/null 2>&1
-      - terraform validate
-      - echo "[VALIDATE] Terraform OK"
-
-  validate:packer:
-    desc: "Validate Packer templates"
-    dir: "{{.ROOT_DIR}}/{{.PACKER_DIR}}"
-    env:
-      PKR_VAR_hcloud_token: "placeholder"
-    cmds:
-      - packer init .
-      - >-
-        packer validate
-        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
-        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
-        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
-        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
-        .
-      - echo "[VALIDATE] Packer OK"
-
-  validate:kustomize:
-    desc: "Validate Kustomize overlays render without errors"
-    cmds:
-      - kubectl kustomize infra/argocd/envs/dev --load-restrictor=LoadRestrictionsNone >/dev/null
-      - kubectl kustomize infra/argocd/envs/prod --load-restrictor=LoadRestrictionsNone >/dev/null
-      - echo "[VALIDATE] Kustomize OK"
-
-  validate:manifests:
-    desc: "Validate Kubernetes manifests against API schemas"
-    cmds:
-      - |
-        if command -v kubeconform >/dev/null 2>&1; then
-          for f in infra/argocd/apps/*.yaml; do
-            kubeconform -strict -ignore-missing-schemas "$f"
-          done
-          echo "[VALIDATE] Kubernetes manifests OK"
-        else
-          echo "[VALIDATE] kubeconform not installed — skipping manifest validation"
-        fi
-
-  cluster:fetch-cert:
-    desc: "Fetch the Sealed Secrets public cert from the cluster (run once after bootstrap)"
-    vars:
-      CP_HOSTNAME:
-        sh: cd infra/terraform && terraform output -raw control_plane_init_hostname
-    cmds:
-      - >-
-        ssh root@{{.CP_HOSTNAME}}
-        "export KUBECONFIG=/etc/kubernetes/admin.conf;
-        kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system"
-        > keys/sealed-secrets-cert.pem
-      - echo "Public cert saved to keys/sealed-secrets-cert.pem"
-
-  cluster:seal:
-    desc: "Seal a secret locally using the cluster's public cert"
-    requires:
-      vars: [TENANT, NAME, KEY, VAL]
-    vars:
-      DEST: ""
-      OUTPUT_PATH: "{{if .DEST}}{{.DEST}}{{else}}tenants/{{.TENANT}}/{{.NAME}}-sealed.yaml{{end}}"
-    preconditions:
-      - sh: test -f keys/sealed-secrets-cert.pem
-        msg: "No public cert found. Run 'task cluster:fetch-cert' first."
-    cmds:
-      - "{{if not .DEST}}mkdir -p tenants/{{.TENANT}}{{end}}"
-      - >-
-        kubectl create secret generic {{.NAME}} -n {{.TENANT}}
-        --from-literal={{.KEY}}='{{.VAL}}'
-        --dry-run=client -o yaml |
-        kubeseal --cert keys/sealed-secrets-cert.pem
-        --controller-name=sealed-secrets
-        --controller-namespace=kube-system
-        -o yaml > {{.OUTPUT_PATH}}
-      - echo "Sealed secret written to {{.OUTPUT_PATH}}"
-
-  cluster:post-bootstrap:
-    desc: "Run all post-bootstrap steps (fetch cert, seal secrets, commit)"
-    cmds:
-      - task: cluster:fetch-cert
-      - task: cluster:seal-all
-      - echo ""
-      - echo "[POST-BOOTSTRAP] Done. Review the sealed files, then commit and push:"
-      - echo "  git add infra/manifests/secrets/ infra/argocd/apps/alertmanager-config.yaml"
-      - echo "  git commit -m 'seal bootstrap secrets'"
-      - echo "  git push"
-
-  cluster:seal-all:
-    desc: "Seal all bootstrap placeholder secrets"
-    preconditions:
-      - sh: test -f keys/sealed-secrets-cert.pem
-        msg: "No public cert found. Run 'task cluster:fetch-cert' first."
-    requires:
-      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
-    cmds:
-      - |
-        echo "[SEAL] Sealing grafana-admin-secret..."
-        kubectl create secret generic grafana-admin-secret -n observability \
-          --from-literal=GF_SECURITY_ADMIN_PASSWORD='{{.GRAFANA_PASSWORD}}' \
-          --dry-run=client -o yaml | \
-        kubeseal --cert keys/sealed-secrets-cert.pem \
-          --controller-name=sealed-secrets \
-          --controller-namespace=kube-system \
-          -o yaml > infra/manifests/secrets/grafana-admin-secret.yaml
-        echo "[SEAL] Written to infra/manifests/secrets/grafana-admin-secret.yaml"
-      - |
-        echo "[SEAL] Sealing rustfs-credentials..."
-        kubectl create secret generic rustfs-credentials -n platform-system \
-          --from-literal=rootUser='{{.RUSTFS_USER}}' \
-          --from-literal=rootPassword='{{.RUSTFS_PASSWORD}}' \
-          --dry-run=client -o yaml | \
-        kubeseal --cert keys/sealed-secrets-cert.pem \
-          --controller-name=sealed-secrets \
-          --controller-namespace=kube-system \
-          -o yaml > infra/manifests/secrets/rustfs-credentials.yaml
-        echo "[SEAL] Written to infra/manifests/secrets/rustfs-credentials.yaml"
-      - echo "[SEAL] All secrets sealed. Commit and push to deploy."
-
-  cluster:set-email:
-    desc: "Template LETS_ENCRYPT_EMAIL from .env into ClusterIssuer manifests"
-    preconditions:
-      - sh: test -n "{{.LETS_ENCRYPT_EMAIL}}"
-        msg: "LETS_ENCRYPT_EMAIL is not set in .env"
-    cmds:
-      - >-
-        sed -i 's|email: .*|email: {{.LETS_ENCRYPT_EMAIL}}|g'
-        infra/manifests/cert-manager/cluster-issuers.yaml
-      - echo "[CLUSTER] ClusterIssuer email set to {{.LETS_ENCRYPT_EMAIL}}"

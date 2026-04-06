@@ -17,8 +17,6 @@ spec:
       parameters:
         - name: controller.service.type
           value: LoadBalancer
-        - name: controller.config.use-proxy-protocol
-          value: "true"
         - name: controller.service.annotations.kubernetes\\.io/ingress\\.class
           value: nginx
         - name: controller.metrics.enabled
@@ -31,10 +29,6 @@ spec:
           value: "ALL"
         - name: controller.containerSecurityContext.capabilities.add[0]
           value: "NET_BIND_SERVICE"
-        - name: controller.service.annotations.load-balancer\.hetzner\.cloud/use-private-ip
-          value: "true"
-        - name: controller.service.annotations.load-balancer\.hetzner\.cloud/uses-proxyprotocol
-          value: "true"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: kube-system

@@ -34,5 +34,20 @@ patches:
       - op: add
         path: /spec/source/helm/parameters/-
         value:
-          name: controller.service.annotations.load-balancer\.hetzner\.cloud/name
-          value: "prod-ash-lb-ingress"
+          name: "controller.config.use-proxy-protocol"
+          value: "true"
+      - op: add
+        path: /spec/source/helm/parameters/-
+        value:
+          name: "controller.service.annotations.load-balancer\\.hetzner\\.cloud/use-private-ip"
+          value: "true"
+      - op: add
+        path: /spec/source/helm/parameters/-
+        value:
+          name: "controller.service.annotations.load-balancer\\.hetzner\\.cloud/uses-proxyprotocol"
+          value: "true"
+      - op: add
+        path: /spec/source/helm/parameters/-
+        value:
+          name: "controller.service.annotations.load-balancer\\.hetzner\\.cloud/name"
+          value: "dev-ash-lb-ingress"
