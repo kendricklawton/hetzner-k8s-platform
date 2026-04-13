@@ -32,15 +32,9 @@ spec:
           spec:
             scrapeInterval: 30s
         vmalert:
-          enabled: true
-          spec:
-            selectAllByDefault: true
-            evaluationInterval: 30s
+          enabled: false
         alertmanager:
-          enabled: true
-          spec:
-            selectAllByDefault: true
-            configSecret: alertmanager-config
+          enabled: false
         # kube-state-metrics — pod/deployment/node status metrics
         kube-state-metrics:
           enabled: true

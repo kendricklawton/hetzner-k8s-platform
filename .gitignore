@@ -10,6 +10,7 @@ tfplan
 
 # PACKER
 infra/packer/.plugins
+*.pkrvars.hcl
 
 # KUBERNETES & LOCAL OPS
 .kube/

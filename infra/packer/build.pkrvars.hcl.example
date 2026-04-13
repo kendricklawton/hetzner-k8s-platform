@@ -1,0 +1,4 @@
+kubernetes_version     = "v1.32.13"
+hcloud_ubuntu_version  = "ubuntu-24.04"
+hcloud_k8s_type        = "cpx21"
+hcloud_nat_type        = "cpx11"

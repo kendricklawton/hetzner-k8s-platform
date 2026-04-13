@@ -16,12 +16,7 @@ Self-managed Kubernetes on Hetzner Cloud using kubeadm. GitOps-driven via ArgoCD
 | Secrets | Sealed Secrets (encrypted at rest, committed to Git) |
 | Certificates | cert-manager (Let's Encrypt) |
 | Ingress | ingress-nginx |
-| Database | CloudNativePG (PostgreSQL operator) |
-| Object storage | RustFS (S3-compatible, in-cluster) |
 | Observability | VictoriaMetrics + Grafana + Loki + Fluent Bit |
-| Policy | Kyverno |
-| Vulnerability scanning | Trivy Operator |
-| Cost visibility | OpenCost |
 
 ## Repository Structure
 
@@ -30,6 +25,8 @@ Taskfile.yml                 # All tasks: packer, terraform, cluster ops, valida
 infra/
 ├── terraform/
 │   └── hetzner/         # VPC, NAT VM, servers, LBs, firewall, cloud-init
+│       ├── dev.tfvars.example   # Non-sensitive Terraform vars (dev)
+│       └── prod.tfvars.example  # Non-sensitive Terraform vars (prod)
 ├── packer/              # Golden images: NAT gateway + K8s node
 │   ├── ubuntu.pkr.hcl
 │   ├── files/            # Baked bootstrap scripts (kubeadm, NAT, failover)
@@ -40,7 +37,7 @@ infra/
 │       ├── base/         # Shared app list (all environments)
 │       ├── hetzner-dev/  # Kustomize overlay — dev patches
 │       └── hetzner-prod/ # Kustomize overlay — prod patches
-└── manifests/            # Alerts, PDBs, ClusterIssuers, Sealed Secrets
+└── manifests/            # ClusterIssuers, Sealed Secrets
 keys/                     # GCS SA keys + Sealed Secrets cert (gitignored)
 ```
 
@@ -69,10 +66,10 @@ Cilium runs in native routing mode. The Hetzner CCM registers per-node pod CIDR 
 ## Prerequisites
 
 - `terraform`, `packer`, `helm`, `kubectl`, `kubeseal`, `task`, `gcloud` installed
-- `.env` populated from `.env.example`
+- `.env` populated from `.env.example` (secrets + GCS buckets)
+- `infra/terraform/hetzner/{dev,prod}.tfvars` populated from `.tfvars.example` (infrastructure config)
 - GCS SA keys at `keys/gcp-tfstate-{dev,prod}.json`
 - SSH key uploaded to Hetzner Cloud
-- Tailscale API key + tailnet configured
 
 Run `task validate:env` to check everything before starting.
 
@@ -143,9 +140,7 @@ ArgoCD then syncs all platform apps automatically (~5 min).
 
 ```sh
 task bootstrap \
-  GRAFANA_PASSWORD='...' \
-  RUSTFS_USER='admin' \
-  RUSTFS_PASSWORD='...'
+  GRAFANA_PASSWORD='...'
 ```
 
 This runs: `kubeconfig` → `fetch-cert` → `seal-all` → prints commit instructions.
@@ -203,13 +198,6 @@ The key pair regenerates on every rebuild — re-seal all secrets after.
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 -d
-```
-
-### Database (CNPG)
-```sh
-kubectl exec -it -n platform-system \
-  $(kubectl get pod -n platform-system -l role=primary -o name | head -1) \
-  -- psql -U platform platform
 ```
 
 ### Validate before pushing

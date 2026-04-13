@@ -46,19 +46,3 @@ metadata:
     platform.io/managed-by: argocd
     pod-security.kubernetes.io/enforce: baseline
 
-
-# -----------------------------------------------------------------------------
-# OPERATORS
-# -----------------------------------------------------------------------------
-
----
-# CloudNativePG — PostgreSQL operator
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cnpg-system
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-  labels:
-    platform.io/managed-by: argocd
-    pod-security.kubernetes.io/enforce: baseline

@@ -2,23 +2,6 @@ version: "3"
 
 dotenv: [".env"]
 
-vars:
-  # Versions
-  KUBERNETES_VERSION: "v1.32.13"
-  CILIUM_VERSION: "1.19.2"
-  SEALED_SECRETS_VERSION: "2.18.4"
-  ARGOCD_VERSION: "9.4.17"
-
-  # Hetzner server types
-  HCLOUD_UBUNTU_VERSION: "ubuntu-24.04"
-  HCLOUD_K8S_TYPE: "cpx21"
-  HCLOUD_LB_TYPE: "lb11"
-  HCLOUD_NAT_TYPE: "cpx11"
-  HCLOUD_CP_SERVER_TYPE: "cpx21"
-  HCLOUD_WORKER_SERVER_TYPE: "cpx21"
-  HETZNER_CCM_VERSION: "1.30.1"
-  HETZNER_CSI_VERSION: "2.20.0"
-
 tasks:
   # ==========================================================================
   # PACKER — golden image builds
@@ -29,19 +12,13 @@ tasks:
     silent: true
     dir: infra/packer
     preconditions:
-      - sh: test -n "{{.HCLOUD_TOKEN}}"
-        msg: "HCLOUD_TOKEN is not set in .env"
-    env:
-      PKR_VAR_hcloud_token: "{{.HCLOUD_TOKEN}}"
+      - sh: test -n "$PKR_VAR_hcloud_token"
+        msg: "PKR_VAR_hcloud_token is not set in .env"
+      - sh: test -f build.pkrvars.hcl
+        msg: "build.pkrvars.hcl not found — copy from build.pkrvars.hcl.example"
     cmds:
       - packer init .
-      - >-
-        packer build {{.BUILD_ARGS}}
-        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
-        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
-        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
-        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
-        .
+      - packer build {{.BUILD_ARGS}} -var-file=build.pkrvars.hcl .
 
   packer:
     desc: "Build Hetzner Cloud images (NAT + K8s node)"
@@ -57,72 +34,55 @@ tasks:
     internal: true
     dir: infra/terraform/hetzner
     preconditions:
-      - sh: test -f "keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
+      - sh: test -f "{{.ROOT_DIR}}/keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
         msg: "GCP SA key not found at keys/gcp-tfstate-{{.CLOUD_ENV}}.json — download from GCP console"
-      - sh: test -n "{{.HCLOUD_TOKEN}}"
-        msg: "HCLOUD_TOKEN is not set in .env"
+      - sh: test -f "{{.CLOUD_ENV}}.tfvars"
+        msg: "{{.CLOUD_ENV}}.tfvars not found — copy from {{.CLOUD_ENV}}.tfvars.example"
+      - sh: test -n "{{.TF_VAR_token}}"
+        msg: "TF_VAR_token is not set in .env"
     env:
       GOOGLE_APPLICATION_CREDENTIALS: "{{.ROOT_DIR}}/keys/gcp-tfstate-{{.CLOUD_ENV}}.json"
-      TF_VAR_token: "{{.HCLOUD_TOKEN}}"
-      TF_VAR_token_readonly: "{{.HCLOUD_TOKEN_READONLY}}"
-      TF_VAR_env: "{{.CLOUD_ENV}}"
-      TF_VAR_location: "{{.LOCATION}}"
-      TF_VAR_network_zone: "{{.NETWORK_ZONE}}"
-      TF_VAR_git_repo_url: "{{.GIT_REPO_URL}}"
-      TF_VAR_ssh_key_name: "{{.HETZNER_SSH_KEY_NAME}}"
-      TF_VAR_cp_server_type: "{{.HCLOUD_CP_SERVER_TYPE}}"
-      TF_VAR_worker_server_type: "{{.HCLOUD_WORKER_SERVER_TYPE}}"
-      TF_VAR_nat_gateway_type: "{{.HCLOUD_NAT_TYPE}}"
-      TF_VAR_load_balancer_type: "{{.HCLOUD_LB_TYPE}}"
-      TF_VAR_tailscale_api_key: "{{.TAILSCALE_API_KEY}}"
-      TF_VAR_tailscale_tailnet: "{{.TAILSCALE_TAILNET}}"
-      TF_VAR_kubernetes_version: "{{.KUBERNETES_VERSION}}"
-      TF_VAR_cilium_version: "{{.CILIUM_VERSION}}"
-      TF_VAR_argocd_version: "{{.ARGOCD_VERSION}}"
-      TF_VAR_sealed_secrets_version: "{{.SEALED_SECRETS_VERSION}}"
-      TF_VAR_ccm_version: "{{.HETZNER_CCM_VERSION}}"
-      TF_VAR_csi_version: "{{.HETZNER_CSI_VERSION}}"
     cmds:
       - terraform init -reconfigure -backend-config="bucket={{.TFSTATE_BUCKET}}" -backend-config="prefix={{.CLOUD_ENV}}"
-      - terraform {{.CMD}} {{.ARGS}}
+      - terraform {{.CMD}} {{.TF_ARGS}}
 
   plan:
     desc: "Plan Hetzner infrastructure (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "plan", ARGS: "-out=tfplan" }
+        vars: { CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "plan", TF_ARGS: "-var-file=dev.tfvars -out=tfplan" }
 
   apply:
     desc: "Apply Hetzner infrastructure (Dev)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+        vars: { CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "apply", TF_ARGS: "-auto-approve tfplan" }
 
   destroy:
     desc: "Destroy Hetzner infrastructure (Dev)"
-    prompt: "This will destroy all dev-ash Hetzner infrastructure. Are you sure?"
+    prompt: "This will destroy all dev Hetzner infrastructure. Are you sure?"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "destroy", ARGS: "-auto-approve" }
+        vars: { CLOUD_ENV: "dev", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_DEV}}", CMD: "destroy", TF_ARGS: "-var-file=dev.tfvars -auto-approve" }
 
   plan:prod:
     desc: "Plan Hetzner infrastructure (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "plan", ARGS: "-out=tfplan" }
+        vars: { CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "plan", TF_ARGS: "-var-file=prod.tfvars -out=tfplan" }
 
   apply:prod:
     desc: "Apply Hetzner infrastructure (Prod)"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "apply", ARGS: "-auto-approve tfplan" }
+        vars: { CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "apply", TF_ARGS: "-auto-approve tfplan" }
 
   destroy:prod:
     desc: "Destroy Hetzner infrastructure (Prod)"
-    prompt: "PRODUCTION — This will destroy prod-ash Hetzner infrastructure including all nodes and data. Are you sure?"
+    prompt: "PRODUCTION — This will destroy prod Hetzner infrastructure including all nodes and data. Are you sure?"
     cmds:
       - task: _tf
-        vars: { LOCATION: "ash", NETWORK_ZONE: "us-east", CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "destroy", ARGS: "-auto-approve" }
+        vars: { CLOUD_ENV: "prod", TFSTATE_BUCKET: "{{.HETZNER_TFSTATE_BUCKET_PROD}}", CMD: "destroy", TF_ARGS: "-var-file=prod.tfvars -auto-approve" }
 
   # ==========================================================================
   # CLUSTER ACCESS + OPERATIONS
@@ -209,7 +169,7 @@ tasks:
       - sh: test -f keys/sealed-secrets-cert.pem
         msg: "No public cert found. Run 'task fetch-cert' first."
     requires:
-      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+      vars: [GRAFANA_PASSWORD]
     cmds:
       - |
         echo "[SEAL] Sealing grafana-admin-secret..."
@@ -221,31 +181,18 @@ tasks:
           --controller-namespace=kube-system \
           -o yaml > infra/manifests/secrets/grafana-admin-secret.yaml
         echo "[SEAL] Written to infra/manifests/secrets/grafana-admin-secret.yaml"
-      - |
-        echo "[SEAL] Sealing rustfs-credentials..."
-        kubectl create secret generic rustfs-credentials -n platform-system \
-          --from-literal=rootUser='{{.RUSTFS_USER}}' \
-          --from-literal=rootPassword='{{.RUSTFS_PASSWORD}}' \
-          --dry-run=client -o yaml | \
-        kubeseal --cert keys/sealed-secrets-cert.pem \
-          --controller-name=sealed-secrets \
-          --controller-namespace=kube-system \
-          -o yaml > infra/manifests/secrets/rustfs-credentials.yaml
-        echo "[SEAL] Written to infra/manifests/secrets/rustfs-credentials.yaml"
       - echo "[SEAL] All secrets sealed. Commit and push to deploy."
 
   bootstrap:
     desc: "Fetch kubeconfig + seal secrets (Dev)"
     requires:
-      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+      vars: [GRAFANA_PASSWORD]
     cmds:
       - task: kubeconfig
       - task: fetch-cert
       - task: seal-all
         vars:
           GRAFANA_PASSWORD: "{{.GRAFANA_PASSWORD}}"
-          RUSTFS_USER: "{{.RUSTFS_USER}}"
-          RUSTFS_PASSWORD: "{{.RUSTFS_PASSWORD}}"
       - echo ""
       - echo "[BOOTSTRAP] Done. Commit and push:"
       - echo "  git add infra/manifests/secrets/"
@@ -255,15 +202,13 @@ tasks:
   bootstrap:prod:
     desc: "Fetch kubeconfig + seal secrets (Prod)"
     requires:
-      vars: [GRAFANA_PASSWORD, RUSTFS_USER, RUSTFS_PASSWORD]
+      vars: [GRAFANA_PASSWORD]
     cmds:
       - task: kubeconfig:prod
       - task: fetch-cert
       - task: seal-all
         vars:
           GRAFANA_PASSWORD: "{{.GRAFANA_PASSWORD}}"
-          RUSTFS_USER: "{{.RUSTFS_USER}}"
-          RUSTFS_PASSWORD: "{{.RUSTFS_PASSWORD}}"
       - echo ""
       - echo "[BOOTSTRAP] Done. Commit and push:"
       - echo "  git add infra/manifests/secrets/"
@@ -342,25 +287,27 @@ tasks:
         check_tool task       "https://taskfile.dev/installation/"
         check_tool gcloud     "https://cloud.google.com/sdk/docs/install (for GCS state backend)"
 
-        echo "--- Hetzner ---"
-        check_var HCLOUD_TOKEN
-        check_var HCLOUD_TOKEN_READONLY
-        check_var HETZNER_SSH_KEY_NAME
-        check_var TAILSCALE_API_KEY
-        check_var TAILSCALE_TAILNET
+        echo "--- .env (secrets + backend) ---"
+        check_var TF_VAR_token
+        check_var TF_VAR_token_readonly
+        check_var TF_VAR_tailscale_api_key
+        check_var PKR_VAR_hcloud_token
         check_var HETZNER_TFSTATE_BUCKET_DEV
         check_var HETZNER_TFSTATE_BUCKET_PROD
         check_var HETZNER_BACKUP_BUCKET_DEV
         check_var HETZNER_BACKUP_BUCKET_PROD
-
-        echo "--- GCS (state + backups) ---"
-        check_file keys/gcp-tfstate-dev.json
-        check_file keys/gcp-tfstate-prod.json
-
-        echo "--- Platform ---"
         check_var GIT_REPO_URL
         check_var LETS_ENCRYPT_EMAIL
         check_var DOMAIN
+
+        echo "--- var files ---"
+        check_file infra/packer/build.pkrvars.hcl
+        check_file infra/terraform/hetzner/dev.tfvars
+        check_file infra/terraform/hetzner/prod.tfvars
+
+        echo "--- GCS keys ---"
+        check_file keys/gcp-tfstate-dev.json
+        check_file keys/gcp-tfstate-prod.json
 
         echo "--- Warnings ---"
         for f in infra/argocd/apps/*.yaml; do
@@ -394,13 +341,7 @@ tasks:
       PKR_VAR_hcloud_token: "placeholder"
     cmds:
       - packer init .
-      - >-
-        packer validate
-        -var "kubernetes_version={{.KUBERNETES_VERSION}}"
-        -var "hcloud_k8s_type={{.HCLOUD_K8S_TYPE}}"
-        -var "hcloud_nat_type={{.HCLOUD_NAT_TYPE}}"
-        -var "hcloud_ubuntu_version={{.HCLOUD_UBUNTU_VERSION}}"
-        .
+      - packer validate -var-file=build.pkrvars.hcl .
       - echo "[VALIDATE] Packer OK"
 
   validate:kustomize:

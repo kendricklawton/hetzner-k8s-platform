@@ -61,10 +61,6 @@ spec:
               gnetId: 6417
               revision: 1
               datasource: VictoriaMetrics
-            cnpg:
-              gnetId: 20417
-              revision: 3
-              datasource: VictoriaMetrics
         persistence:
           enabled: true
           size: 2Gi

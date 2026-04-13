@@ -4,7 +4,7 @@
   =============================================================================
   Two image types:
   1. NAT Gateway — tiny router for outbound internet traffic (private nodes).
-  2. K8s Node    — kubeadm/kubelet/kubectl, containerd, gVisor, Helm.
+  2. K8s Node    — kubeadm/kubelet/kubectl, containerd, Helm.
 
   Shared provisioner scripts live in scripts/:
     base.sh, tailscale.sh, cleanup.sh
@@ -156,27 +156,6 @@ build {
       "containerd config default > /etc/containerd/config.toml",
       "sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml",
       "systemctl enable containerd"
-    ]
-  }
-
-  # gVisor (runsc sandbox runtime)
-  provisioner "shell" {
-    inline = [
-      "ARCH=$(uname -m)",
-      "URL=https://storage.googleapis.com/gvisor/releases/release/latest/$${ARCH}",
-      "wget $${URL}/runsc $${URL}/runsc.sha512",
-      "sha512sum -c runsc.sha512",
-      "rm -f runsc.sha512",
-      "chmod a+rx runsc && mv runsc /usr/local/bin && ln -sf /usr/local/bin/runsc /usr/bin/runsc",
-      "wget $${URL}/containerd-shim-runsc-v1 $${URL}/containerd-shim-runsc-v1.sha512",
-      "sha512sum -c containerd-shim-runsc-v1.sha512",
-      "rm -f containerd-shim-runsc-v1.sha512",
-      "chmod a+rx containerd-shim-runsc-v1 && mv containerd-shim-runsc-v1 /usr/local/bin && ln -sf /usr/local/bin/containerd-shim-runsc-v1 /usr/bin/containerd-shim-runsc-v1",
-      "cat >> /etc/containerd/config.toml << 'EOF'",
-      "",
-      "[plugins.\"io.containerd.grpc.v1.cri\".containerd.runtimes.runsc]",
-      "  runtime_type = \"io.containerd.runsc.v1\"",
-      "EOF"
     ]
   }
 
